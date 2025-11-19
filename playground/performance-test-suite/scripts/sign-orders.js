@@ -22,22 +22,38 @@ const CHAIN_ID = 31337; // Anvil
 const SETTLEMENT_CONTRACT = '0xb7f8bc63bbcad18155201308c8f3540b07f84f5e';
 const OUTPUT_FILE = path.join(__dirname, '../signed-orders.json');
 
+// Token configurations with decimals
+const TOKENS = {
+  WETH: {
+    address: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+    decimals: 18,
+  },
+  USDC: {
+    address: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+    decimals: 6,
+  },
+  DAI: {
+    address: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9',
+    decimals: 18,
+  },
+};
+
 // Token pairs (from load-test.ts)
 const TOKEN_PAIRS = [
   {
     name: 'WETH/USDC',
-    sellToken: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
-    buyToken: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+    sellToken: TOKENS.WETH,
+    buyToken: TOKENS.USDC,
   },
   {
     name: 'WETH/DAI',
-    sellToken: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
-    buyToken: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9',
+    sellToken: TOKENS.WETH,
+    buyToken: TOKENS.DAI,
   },
   {
     name: 'USDC/DAI',
-    sellToken: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
-    buyToken: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9',
+    sellToken: TOKENS.USDC,
+    buyToken: TOKENS.DAI,
   },
 ];
 
@@ -105,14 +121,21 @@ function randomChoice(array) {
 }
 
 /**
+ * Parse amount with correct decimals for a token
+ */
+function parseAmount(amount, decimals) {
+  return ethers.parseUnits(amount, decimals);
+}
+
+/**
  * Generate a single order (unsigned)
  */
 function generateOrder(index) {
   const pair = randomChoice(TOKEN_PAIRS);
 
-  // Generate amounts
-  const minAmount = ethers.parseEther('1'); // 1 token
-  const maxAmount = ethers.parseEther('10'); // 10 tokens
+  // Generate amounts with correct decimals for each token
+  const minAmount = parseAmount('1', pair.sellToken.decimals); // 1 token
+  const maxAmount = parseAmount('10', pair.sellToken.decimals); // 10 tokens
   const sellAmount = randomBigInt(minAmount, maxAmount);
 
   // Buy amount with some price variation
@@ -123,12 +146,12 @@ function generateOrder(index) {
   // Valid for 1 hour from now (CoW Protocol orderbook has a max validTo limit)
   const validTo = Math.floor(Date.now() / 1000) + 3600;
 
-  // Fee (0.1% of sell amount)
-  const feeAmount = sellAmount / 1000n;
+  // Fee must be zero for offline mode (no fee mechanism configured)
+  const feeAmount = 0n;
 
   return {
-    sellToken: pair.sellToken,
-    buyToken: pair.buyToken,
+    sellToken: pair.sellToken.address,
+    buyToken: pair.buyToken.address,
     receiver: ethers.ZeroAddress, // Will be set to signer address
     sellAmount: sellAmount.toString(),
     buyAmount: buyAmount.toString(),
