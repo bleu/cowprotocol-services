@@ -1,0 +1,60 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'cow-protocol-perf-test'
+    environment: 'local'
+
+# Alertmanager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - 'alertmanager:9093'
+
+# Load rules once and periodically evaluate them
+# rule_files:
+#   - "alerts.yml"
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # K6 metrics (if exposed via prometheus output)
+  - job_name: 'k6'
+    static_configs:
+      - targets: ['k6:6565']
+    scrape_interval: 5s
+
+  # CoW Protocol Services (if available in offline mode)
+  # Uncomment and adjust these based on your deployment
+
+  # - job_name: 'orderbook'
+  #   static_configs:
+  #     - targets: ['orderbook:8080']
+  #   metrics_path: '/metrics'
+
+  # - job_name: 'autopilot'
+  #   static_configs:
+  #     - targets: ['autopilot:9589']
+  #   metrics_path: '/metrics'
+
+  # - job_name: 'driver'
+  #   static_configs:
+  #     - targets: ['driver:9590']
+  #   metrics_path: '/metrics'
+
+  # - job_name: 'solver'
+  #   static_configs:
+  #     - targets: ['solver:8000']
+  #   metrics_path: '/metrics'
+
+# Remote write configuration for K6
+remote_write:
+  - url: http://localhost:9090/api/v1/write
+    queue_config:
+      max_samples_per_send: 1000
+      max_shards: 200
+      capacity: 2500
