@@ -119,6 +119,12 @@ services:
       - 8080:80 # API
       - 9586:9586 # metrics
       - 6669:6669 # tokio console
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/api/v1/version || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
 
   autopilot:
     build:
@@ -171,7 +177,7 @@ services:
       - ../:/src
     depends_on:
       orderbook:
-        condition: service_started
+        condition: service_healthy
       chain:
         condition: service_healthy
     ports:
@@ -332,6 +338,7 @@ services:
       - BASE_URL=http://orderbook
       - K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write
       - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true
+      - SCENARIO=stress
     command: >
       run
       --out json=/results/summary.json
@@ -339,7 +346,7 @@ services:
       /scripts/load-test.js
     depends_on:
       orderbook:
-        condition: service_started
+        condition: service_healthy
       driver:
         condition: service_started
       prometheus:
