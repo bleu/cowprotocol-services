@@ -312,15 +312,15 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
-      - '--web.enable-remote-write-receiver'
-      - '--enable-feature=native-histograms'
-      - '--storage.tsdb.retention.time=6h'  # Keep data for 6 hours only
-      - '--storage.tsdb.retention.size=5GB'  # Maximum 5GB storage
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--web.enable-lifecycle"
+      - "--web.enable-remote-write-receiver"
+      - "--enable-feature=native-histograms"
+      - "--storage.tsdb.retention.time=6h" # Keep data for 6 hours only
+      - "--storage.tsdb.retention.size=5GB" # Maximum 5GB storage
   k6:
     image: grafana/k6:latest
     profiles: ["perf-test"]
@@ -338,8 +338,12 @@ services:
       --out experimental-prometheus-rw
       /scripts/load-test.js
     depends_on:
-      - orderbook
-      - prometheus
+      orderbook:
+        condition: service_started
+      driver:
+        condition: service_started
+      prometheus:
+        condition: service_started
     networks:
       - default
 

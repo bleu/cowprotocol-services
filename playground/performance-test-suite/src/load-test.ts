@@ -6,8 +6,9 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
-import { getRandomSignedOrder, getPoolStats } from './signed-order-pool';
+import { getSignedOrderRoundRobin, getPoolStats } from './signed-order-pool';
 import { mediumLoadScenario } from './scenarios';
+import execution from 'k6/execution';
 
 // Custom metrics
 const ordersSubmitted = new Counter('orders_submitted');
@@ -51,8 +52,10 @@ export function setup() {
  * Main test function - runs for each VU iteration
  */
 export default function (data: any) {
-  // Get a pre-signed order from the pool
-  const order = getRandomSignedOrder();
+  // Get a pre-signed order from the pool using round-robin
+  // This ensures each order is used sequentially across all VUs
+  const globalIteration = execution.scenario.iterationInTest;
+  const order = getSignedOrderRoundRobin(globalIteration);
 
   // Submit order to orderbook API
   const payload = JSON.stringify(order);
@@ -87,7 +90,7 @@ export default function (data: any) {
     'response time < 1000ms': (r) => r.timings.duration < 1000,
   });
 
-  if (success) {
+  if (response.status === 201) {
     ordersAccepted.add(1);
     orderAcceptanceRate.add(1);
   } else {

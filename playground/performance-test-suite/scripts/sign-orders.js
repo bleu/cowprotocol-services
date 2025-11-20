@@ -138,10 +138,25 @@ function generateOrder(index) {
   const maxAmount = parseAmount('10', pair.sellToken.decimals); // 10 tokens
   const sellAmount = randomBigInt(minAmount, maxAmount);
 
-  // Buy amount with some price variation
+  // Buy amount with price variation - must account for decimal differences
   const priceVariation = randomFloat(0.95, 1.05);
-  const buyAmountNum = Math.floor(Number(sellAmount) * priceVariation);
-  const buyAmount = buyAmountNum > 0 ? BigInt(buyAmountNum) : 1n;
+
+  // Convert sellAmount to a comparable unit, apply price variation, then scale to buyToken decimals
+  // If selling USDC (6 decimals) for DAI (18 decimals), we need to scale up
+  const decimalDifference = pair.buyToken.decimals - pair.sellToken.decimals;
+  const scaleFactor = 10n ** BigInt(Math.abs(decimalDifference));
+
+  let buyAmount;
+  if (decimalDifference >= 0) {
+    // Buy token has more decimals - scale up
+    buyAmount = (sellAmount * scaleFactor * BigInt(Math.floor(priceVariation * 1000))) / 1000n;
+  } else {
+    // Buy token has fewer decimals - scale down
+    buyAmount = (sellAmount * BigInt(Math.floor(priceVariation * 1000))) / (scaleFactor * 1000n);
+  }
+
+  // Ensure buyAmount is at least 1
+  buyAmount = buyAmount > 0n ? buyAmount : 1n;
 
   // Valid for 1 hour from now (CoW Protocol orderbook has a max validTo limit)
   const validTo = Math.floor(Date.now() / 1000) + 3600;
