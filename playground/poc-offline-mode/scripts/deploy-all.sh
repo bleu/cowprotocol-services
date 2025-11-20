@@ -124,8 +124,8 @@ COW_AUTHENTICATOR=$(jq -r '[.transactions[] | select(.transactionType == "CREATE
 # Settlement is second (index 1)
 COW_SETTLEMENT=$(jq -r '[.transactions[] | select(.transactionType == "CREATE")] | .[1].contractAddress' broadcast/DeployCowProtocol.s.sol/31337/run-latest.json)
 # VaultRelayer is created by Settlement contract, need to read it from chain
-# cast call returns bytes32, we need to extract the address (last 20 bytes = 40 hex chars)
-COW_VAULT_RELAYER=$(cast call $COW_SETTLEMENT "vaultRelayer()" --rpc-url $RPC_URL | xargs | cut -c 27-66)
+# cast call returns bytes32, we need to extract the address (last 20 bytes = 40 hex chars, keeping 0x prefix)
+COW_VAULT_RELAYER=0x$(cast call $COW_SETTLEMENT "vaultRelayer()" --rpc-url $RPC_URL | xargs | cut -c 27-66)
 
 # Export for next scripts
 export COW_AUTHENTICATOR
@@ -236,9 +236,26 @@ echo ""
 echo "✅ Liquidity added to all pairs!"
 echo ""
 
-# Step 4.5: Initialize Router (approve tokens for settlement to use)
+# Step 4.5: Fund Test Accounts
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "STEP 4.5: Initializing Uniswap Router (Token Approvals)"
+echo "STEP 4.5: Funding Test Accounts for Load Testing"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Pass addresses directly to forge using environment variables
+export VAULT_RELAYER_ADDRESS=$COW_VAULT_RELAYER
+echo "Using Vault Relayer Address: $VAULT_RELAYER_ADDRESS"
+forge script contracts/script/FundTestAccounts.s.sol:FundTestAccounts \
+    --rpc-url $RPC_URL \
+    --broadcast \
+    -vv
+
+echo ""
+echo "✅ Test accounts funded and approved!"
+echo ""
+
+# Step 4.6: Initialize Router (approve tokens for settlement to use)
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "STEP 4.6: Initializing Uniswap Router (Token Approvals)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Alice's address (Anvil account #0) will be the solver
@@ -408,7 +425,8 @@ echo "  ✅ Step 3: CoW Protocol deployed (Settlement, Auth, VaultRelayer)"
 echo "  ✅ Step 3.5: Balances contract deployed"
 echo "  ✅ Step 3.6: Signatures contract deployed"
 echo "  ✅ Step 4: Liquidity added to all pairs"
-echo "  ✅ Step 4.5: Uniswap Router initialized (token approvals)"
+echo "  ✅ Step 4.5: Test accounts funded and approved"
+echo "  ✅ Step 4.6: Uniswap Router initialized (token approvals)"
 echo "  ✅ Step 5: Addresses exported to JSON"
 echo "  ✅ Step 6: Configuration files generated"
 echo "  ✅ Step 7: Blockchain state saved"
