@@ -7,12 +7,12 @@ use {
         dto,
         solver_competition::{Identifier, LoadSolverCompetitionError, SolverCompetitionStoring},
     },
+    alloy::primitives::{Address, B256},
     anyhow::{Context, Result},
     app_data::{AppDataHash, Validator},
     bigdecimal::ToPrimitive,
     chrono::Utc,
     database::order_events::OrderEventLabel,
-    ethcontract::H256,
     ethrpc::alloy::conversions::IntoLegacy,
     model::{
         DomainSeparator,
@@ -79,9 +79,9 @@ impl Metrics {
             // Check if the order at the submission time was "in market"
             !is_order_outside_market_price(
                 &Amounts {
-                    sell: order.data.sell_amount,
-                    buy: order.data.buy_amount,
-                    fee: order.data.fee_amount,
+                    sell: order.data.sell_amount.into_legacy(),
+                    buy: order.data.buy_amount.into_legacy(),
+                    fee: order.data.fee_amount.into_legacy(),
                 },
                 &Amounts {
                     sell: quote.sell_amount,
@@ -349,7 +349,10 @@ impl Orderbook {
         let signer = cancellation
             .validate(&self.domain_separator)
             .map_err(|_| OrderCancellationError::InvalidSignature)?;
-        if orders.iter().any(|order| signer != order.metadata.owner) {
+        if orders
+            .iter()
+            .any(|order| signer != order.metadata.owner.into_legacy())
+        {
             return Err(OrderCancellationError::WrongOwner);
         };
 
@@ -379,7 +382,7 @@ impl Orderbook {
         let signer = cancellation
             .validate(&self.domain_separator)
             .map_err(|_| OrderCancellationError::InvalidSignature)?;
-        if signer != order.metadata.owner {
+        if signer != order.metadata.owner.into_legacy() {
             return Err(OrderCancellationError::WrongOwner);
         };
 
@@ -496,7 +499,7 @@ impl Orderbook {
         self.database_replica.single_order(uid).await
     }
 
-    pub async fn get_orders_for_tx(&self, hash: &H256) -> Result<Vec<Order>> {
+    pub async fn get_orders_for_tx(&self, hash: &B256) -> Result<Vec<Order>> {
         self.database_replica.orders_for_tx(hash).await
     }
 
@@ -513,7 +516,7 @@ impl Orderbook {
 
     pub async fn get_user_orders(
         &self,
-        owner: &H160,
+        owner: &Address,
         offset: u64,
         limit: u64,
     ) -> Result<Vec<Order>> {
@@ -576,7 +579,7 @@ impl Orderbook {
             Some(Some(tx_hash)) => {
                 let competition = self
                     .database
-                    .load_competition(Identifier::Transaction(tx_hash.into_legacy()))
+                    .load_competition(Identifier::Transaction(tx_hash))
                     .await?;
                 return Ok(dto::order::Status::Traded(solutions(competition)));
             }
@@ -633,6 +636,7 @@ mod tests {
         super::*,
         crate::database::orders::MockOrderStoring,
         ethcontract::H160,
+        ethrpc::alloy::conversions::{IntoAlloy, IntoLegacy},
         mockall::predicate::eq,
         model::{
             order::{OrderData, OrderMetadata},
@@ -647,7 +651,7 @@ mod tests {
         let old_order = Order {
             metadata: OrderMetadata {
                 uid: OrderUid([1; 56]),
-                owner: H160([1; 20]),
+                owner: Address::new([1; 20]),
                 ..Default::default()
             },
             data: OrderData {
@@ -675,7 +679,7 @@ mod tests {
                 Ok((
                     Order {
                         metadata: OrderMetadata {
-                            owner: creation.from.unwrap(),
+                            owner: creation.from.unwrap().into_alloy(),
                             uid: new_order_uid,
                             ..Default::default()
                         },
@@ -751,7 +755,7 @@ mod tests {
         assert!(matches!(
             orderbook
                 .add_order(OrderCreation {
-                    from: Some(old_order.metadata.owner),
+                    from: Some(old_order.metadata.owner.into_legacy()),
                     signature: Signature::PreSign,
                     app_data: OrderCreationAppData::Full {
                         full: format!(
@@ -770,7 +774,7 @@ mod tests {
         // Stars align...
         let (order_id, _) = orderbook
             .add_order(OrderCreation {
-                from: Some(old_order.metadata.owner),
+                from: Some(old_order.metadata.owner.into_legacy()),
                 signature: Signature::Eip712(Default::default()),
                 app_data: OrderCreationAppData::Full {
                     full: format!(
