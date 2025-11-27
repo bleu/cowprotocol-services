@@ -8,6 +8,10 @@ echo ""
 : ${RPC_URL:=http://localhost:8545}
 : ${DEPLOYER_PRIVATE_KEY:=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}
 
+# Export for forge scripts to use
+export RPC_URL
+export DEPLOYER_PRIVATE_KEY
+
 echo "Using RPC URL: $RPC_URL"
 echo ""
 
@@ -157,8 +161,8 @@ COW_AUTHENTICATOR=$(jq -r '[.transactions[] | select(.transactionType == "CREATE
 # Settlement is second (index 1)
 COW_SETTLEMENT=$(jq -r '[.transactions[] | select(.transactionType == "CREATE2")] | .[1].contractAddress' broadcast/DeployCowProtocol.s.sol/31337/run-latest.json)
 # VaultRelayer is created by Settlement contract, need to read it from chain
-# cast call returns bytes32, we need to extract the address (last 20 bytes = 40 hex chars)
-COW_VAULT_RELAYER=$(cast call $COW_SETTLEMENT "vaultRelayer()" --rpc-url $RPC_URL | xargs | cut -c 27-66)
+# cast call returns bytes32, we need to extract the address (last 20 bytes = 40 hex chars) and add 0x prefix
+COW_VAULT_RELAYER="0x$(cast call $COW_SETTLEMENT "vaultRelayer()" --rpc-url $RPC_URL | xargs | cut -c 27-66)"
 
 # Export for next scripts
 export COW_AUTHENTICATOR
@@ -257,6 +261,35 @@ echo "📝 Deployed Signatures address:"
 echo "  Signatures: $SIGNATURES_CONTRACT"
 echo ""
 
+# Step 3.7: Deploy HooksTrampoline Contract
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "STEP 3.7: Deploying HooksTrampoline Contract"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Set SETTLEMENT environment variable for the deployment script
+export SETTLEMENT=$COW_SETTLEMENT
+
+forge script contracts/script/DeployHooksTrampoline.s.sol:DeployHooksTrampoline \
+    --rpc-url $RPC_URL \
+    --broadcast \
+    --private-key $DEPLOYER_PRIVATE_KEY \
+    --skip-simulation \
+    -vvv
+
+echo ""
+echo "✅ HooksTrampoline contract deployed!"
+echo ""
+
+# Extract HooksTrampoline address from broadcast (CREATE2 transaction)
+HOOKS_TRAMPOLINE=$(jq -r '.transactions[] | select(.contractName == "HooksTrampoline") | .contractAddress' broadcast/DeployHooksTrampoline.s.sol/31337/run-latest.json)
+
+# Export for next scripts
+export HOOKS_TRAMPOLINE
+
+echo "📝 Deployed HooksTrampoline address:"
+echo "  HooksTrampoline: $HOOKS_TRAMPOLINE"
+echo ""
+
 # Step 4: Add Liquidity (using direct method to bypass router)
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "STEP 4: Adding Initial Liquidity"
@@ -321,6 +354,7 @@ export VAULT_RELAYER_ADDRESS=${COW_VAULT_RELAYER}
 export BALANCER_VAULT_ADDRESS=${BALANCER_VAULT}
 export BALANCES_CONTRACT_ADDRESS=${BALANCES_CONTRACT}
 export SIGNATURES_CONTRACT_ADDRESS=${SIGNATURES_CONTRACT}
+export HOOKS_CONTRACT_ADDRESS=${HOOKS_TRAMPOLINE}
 
 # Generate configuration files using bash (avoid running solidity script which causes "stack too deep" errors)
 generate_configs() {
@@ -341,6 +375,7 @@ generate_configs() {
     BALANCER_VAULT_ADDRESS=${BALANCER_VAULT_ADDRESS}
     BALANCES_CONTRACT_ADDRESS=${BALANCES_CONTRACT_ADDRESS}
     SIGNATURES_CONTRACT_ADDRESS=${SIGNATURES_CONTRACT_ADDRESS}
+    HOOKS_CONTRACT_ADDRESS=${HOOKS_CONTRACT_ADDRESS}
 
     # driver.toml
     cat > ../../configs/offline/driver.toml <<EOF
@@ -427,6 +462,7 @@ VAULT_RELAYER_ADDRESS=${VAULT_RELAYER_ADDRESS}
 BALANCER_VAULT_ADDRESS=${BALANCER_VAULT_ADDRESS}
 BALANCES_CONTRACT_ADDRESS=${BALANCES_CONTRACT_ADDRESS}
 SIGNATURES_CONTRACT_ADDRESS=${SIGNATURES_CONTRACT_ADDRESS}
+HOOKS_CONTRACT_ADDRESS=${HOOKS_CONTRACT_ADDRESS}
 EOF
 
     echo "Wrote ./configs/driver.toml, ./configs/baseline.toml, and ../.env.offline"
@@ -448,6 +484,7 @@ echo "  ✅ Step 2: Uniswap V2 deployed (Factory, Router, 3 Pairs)"
 echo "  ✅ Step 3: CoW Protocol deployed (Settlement, Auth, VaultRelayer)"
 echo "  ✅ Step 3.5: Balances contract deployed"
 echo "  ✅ Step 3.6: Signatures contract deployed"
+echo "  ✅ Step 3.7: HooksTrampoline contract deployed"
 echo "  ✅ Step 4: Liquidity added to all pairs"
 echo "  ✅ Step 4.5: Uniswap Router initialized (token approvals)"
 echo "  ✅ Step 5: Addresses exported to JSON"
