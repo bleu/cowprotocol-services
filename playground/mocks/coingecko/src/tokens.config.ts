@@ -3,6 +3,8 @@
  *
  * Prices are denominated in ETH as per Coingecko's API format.
  * These are the 5 tokens deployed in offline mode with deterministic addresses.
+ *
+ * Addresses from: playground/offline-mode/config/addresses.json
  */
 
 export interface TokenConfig {
@@ -15,8 +17,8 @@ export interface TokenConfig {
 
 export const TOKENS: Record<string, TokenConfig> = {
   // WETH - Wrapped Ether
-  '0xb3af08c783c4d9c380893257980b5e26657f2317': {
-    address: '0xb3af08c783c4d9c380893257980b5e26657f2317',
+  '0x0e9eaf7d33972f56831e1fc87ac7ed00c8943f51': {
+    address: '0x0E9eAf7d33972F56831E1fc87AC7Ed00c8943F51',
     symbol: 'WETH',
     name: 'Wrapped Ether',
     decimals: 18,
@@ -24,8 +26,8 @@ export const TOKENS: Record<string, TokenConfig> = {
   },
 
   // DAI - Dai Stablecoin
-  '0xb12812c0cad46d18b669b31059d485fe90b1a839': {
-    address: '0xb12812c0cad46d18b669b31059d485fe90b1a839',
+  '0x0e13b765c10b085cf5648537cb6e5121e683a9a1': {
+    address: '0x0e13b765c10B085CF5648537cB6E5121E683a9a1',
     symbol: 'DAI',
     name: 'Dai Stablecoin',
     decimals: 18,
@@ -33,8 +35,8 @@ export const TOKENS: Record<string, TokenConfig> = {
   },
 
   // USDC - USD Coin
-  '0xb04afbcd351a0a7e4ff658b3772ee5f3f5b6e4ae': {
-    address: '0xb04afbcd351a0a7e4ff658b3772ee5f3f5b6e4ae',
+  '0x3835b40c692affa1e2d0dc3bb6de93ab91e7f805': {
+    address: '0x3835b40C692AFfA1e2D0dC3bB6dE93aB91e7f805',
     symbol: 'USDC',
     name: 'USD Coin',
     decimals: 6,
@@ -42,8 +44,8 @@ export const TOKENS: Record<string, TokenConfig> = {
   },
 
   // USDT - Tether USD
-  '0x171a30524fd943df1a12cbb9da291bf4e34ac84b': {
-    address: '0x171a30524fd943df1a12cbb9da291bf4e34ac84b',
+  '0xfe71f4affd20f7e1ca13e15d1ceecd9c024ead05': {
+    address: '0xfE71f4aFfD20f7e1CA13E15D1cEecd9c024ead05',
     symbol: 'USDT',
     name: 'Tether USD',
     decimals: 6,
@@ -51,8 +53,8 @@ export const TOKENS: Record<string, TokenConfig> = {
   },
 
   // GNO - Gnosis Token
-  '0x51a53858a4a8b81814da35c4604eb9003d56a895': {
-    address: '0x51a53858a4a8b81814da35c4604eb9003d56a895',
+  '0xfb408f28d8b38b127b00d9f07dad87fb21745831': {
+    address: '0xFB408F28D8b38b127b00d9F07daD87Fb21745831',
     symbol: 'GNO',
     name: 'Gnosis Token',
     decimals: 18,

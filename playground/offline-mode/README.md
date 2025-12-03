@@ -61,6 +61,93 @@ Once running, you can access:
 - **Prometheus (metrics)**: http://localhost:9090
 - **Adminer (database)**: http://localhost:8082
 
+## Running Tests
+
+The playground includes TypeScript-based integration tests to verify the setup and functionality.
+
+### Test Suite
+
+#### 1. Playground Order Test (Parameterized)
+
+Test placing and settling orders with custom parameters:
+
+```bash
+npm run test:order
+```
+
+This will run with default parameters. For custom parameters, use ts-node directly:
+
+```bash
+npx ts-node test/test-playground-order.ts --sellToken USDC --buyToken DAI --sellAmount 100e6 --from <PRIVATE_KEY>
+```
+
+**Parameters:**
+- `--sellToken <TOKEN>`: Token to sell (WETH, USDC, DAI, USDT, or GNO)
+- `--buyToken <TOKEN>`: Token to buy (WETH, USDC, DAI, USDT, or GNO)
+- `--sellAmount <AMOUNT>`: Amount to sell with decimals (e.g., `100e6` for 100 USDC, `10e18` for 10 WETH)
+- `--from <PRIVATE_KEY>`: Private key of the trader (defaults to Anvil account #0)
+
+**Examples:**
+```bash
+# Sell 100 USDC for DAI
+npx ts-node test/test-playground-order.ts --sellToken USDC --buyToken DAI --sellAmount 100e6
+
+# Sell 10 GNO for WETH with custom private key
+npx ts-node test/test-playground-order.ts --sellToken GNO --buyToken WETH --sellAmount 10e18 --from 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+```
+
+This test will:
+1. Fund the trader with sell tokens
+2. Get a quote from the orderbook
+3. Sign the order with EIP-712
+4. Submit the order to the orderbook
+5. Monitor settlement status (up to 2 minutes)
+6. Display final balances
+
+#### 2. CoWShed Integration Test
+
+Test the full CoWShed proxy flow with hooks:
+
+```bash
+npm run test:cowshed
+```
+
+This test demonstrates:
+1. Calculate CoWShed proxy address for a user
+2. Create a pre-hook (token approval via hooks trampoline)
+3. Submit an order with hooks in appData
+4. Monitor for settlement
+5. Verify hooks were executed correctly
+
+**Note**: CoWShed proxies enable gasless approvals and other advanced features via pre/post settlement hooks.
+
+### Expected Output
+
+Both tests should complete in **15-30 seconds** when the system is healthy. If orders stay in "open" status for more than 60 seconds, check:
+
+1. **Baseline solver status**: The solver may need to be restarted
+   ```bash
+   docker restart playground-baseline-1
+   ```
+
+2. **Driver logs**: Check for solver errors
+   ```bash
+   docker logs playground-driver-1 --tail 50
+   ```
+
+3. **Token liquidity**: Ensure Uniswap pools have sufficient liquidity for the trading pair
+
+### Troubleshooting Tests
+
+**Orders not settling:**
+- Restart the baseline solver (known issue with solver degradation)
+- Check that services are running: `docker-compose -f docker-compose.offline.yml ps`
+- Verify token approvals are set
+
+**TypeScript errors:**
+- Ensure dependencies are installed: `npm install`
+- Check that TypeScript is properly configured: `npx tsc --version`
+
 ### Contract Addresses
 
 All deployed contract addresses are stored in:

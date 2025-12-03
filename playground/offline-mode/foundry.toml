@@ -27,6 +27,7 @@ remappings = [
     "@uniswap/v2-core/=node_modules/@uniswap/v2-core/",
     "@uniswap/v2-periphery/=node_modules/@uniswap/v2-periphery/",
     "@uniswap/lib/=node_modules/@uniswap/lib/",
+    "cow-shed/=node_modules/cow-shed/src/",
     "solmate/=node_modules/solmate/src/",
     "forge-std/=node_modules/forge-std/src/"
 ]
@@ -40,10 +41,12 @@ fs_permissions = [
     { access = "read", path = "./contracts/out-uniswap-v2" },
     { access = "read", path = "./contracts/out-uniswap-v2-periphery" },
     { access = "read", path = "./contracts/out-cow-protocol" },
+    { access = "read", path = "./contracts/out-cow-shed" },
     { access = "read", path = "./node_modules" },
     { access = "read", path = "./node_modules/@uniswap/v2-core/build" },
     { access = "read", path = "./node_modules/@uniswap/v2-periphery/build" },
-    { access = "read", path = "./node_modules/@cowprotocol/contracts/deployments" }
+    { access = "read", path = "./node_modules/@cowprotocol/contracts/deployments" },
+    { access = "read", path = "./node_modules/cow-shed" }
 ]
 
 # RPC
@@ -96,4 +99,28 @@ via_ir = false
 evm_version = "istanbul"
 remappings = [
     "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts-old/"
+]
+
+# Profile for CoW Shed (Solidity 0.8.30)
+[profile.cow-shed]
+src = "node_modules/cow-shed/src"
+out = "contracts/out-cow-shed"
+libs = ["node_modules/cow-shed/lib", "node_modules"]
+test = "node_modules/cow-shed/test"
+script = "node_modules/cow-shed/script"
+solc_version = "0.8.30"
+optimizer = true
+optimizer_runs = 1000000
+via_ir = true
+evm_version = "cancun"
+bytecode_hash = "none"
+cbor_metadata = false
+ignored_error_codes = [7576]
+remappings = [
+    "openzeppelin-contracts/contracts/=node_modules/cow-shed/lib/openzeppelin-contracts/contracts/",
+    "solady/=node_modules/cow-shed/lib/solady/src/",
+    "forge-std/=node_modules/cow-shed/lib/openzeppelin-contracts/lib/forge-std/src/",
+    "src/=node_modules/cow-shed/src/",
+    "test/=node_modules/cow-shed/test/",
+    "script/=node_modules/cow-shed/script/"
 ]

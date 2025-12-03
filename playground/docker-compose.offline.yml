@@ -225,7 +225,7 @@ services:
     environment:
       - ETHRPC=http://chain:8545
       - ADDR=0.0.0.0:80
-      - RUST_LOG=driver=info,shared=trace
+      - RUST_LOG=driver=debug,shared=trace
       - RUST_BACKTRACE=1
       - TOML_TRACE_ERROR=1
       - TRACING_COLLECTOR_ENDPOINT=http://tempo:4317
@@ -261,7 +261,7 @@ services:
     env_file: .env.offline
     environment:
       - ADDR=0.0.0.0:80
-      - LOG=solvers=info,shared=trace
+      - LOG=solvers=debug,shared=trace
       - RUST_BACKTRACE=1
       - TOML_TRACE_ERROR=1
       - TOKIO_CONSOLE=true

@@ -30,6 +30,8 @@ contract ExportAddresses is Script {
         address cowSettlement = vm.envAddress("COW_SETTLEMENT");
         address balancerVault = vm.envAddress("BALANCER_VAULT");
         address hooksTrampoline = vm.envAddress("HOOKS_TRAMPOLINE");
+        address cowshedImplementation = vm.envAddress("COWSHED_IMPLEMENTATION");
+        address cowshedFactory = vm.envAddress("COWSHED_FACTORY");
 
         console.log("Exporting addresses to JSON...");
         console.log("");
@@ -87,6 +89,13 @@ contract ExportAddresses is Script {
             '  }'
         ));
 
+        string memory cowshedJson = string(abi.encodePacked(
+            '  "cowShed": {\n',
+            '    "implementation": "', vm.toString(cowshedImplementation), '",\n',
+            '    "factory": "', vm.toString(cowshedFactory), '"\n',
+            '  }'
+        ));
+
         string memory json = string(abi.encodePacked(
             '{\n',
             '  "chainId": "31337",\n',
@@ -95,6 +104,8 @@ contract ExportAddresses is Script {
             uniswapJson,
             ',\n',
             cowJson,
+            ',\n',
+            cowshedJson,
             '\n}\n'
         ));
         

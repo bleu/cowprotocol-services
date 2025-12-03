@@ -1,0 +1,6 @@
+[submodule "playground/offline-mode/node_modules/cow-shed/lib/solady"]
+	path = playground/offline-mode/node_modules/cow-shed/lib/solady
+	url = https://github.com/Vectorized/solady
+[submodule "playground/offline-mode/node_modules/cow-shed/lib/openzeppelin-contracts"]
+	path = playground/offline-mode/node_modules/cow-shed/lib/openzeppelin-contracts
+	url = https://github.com/openzeppelin/openzeppelin-contracts

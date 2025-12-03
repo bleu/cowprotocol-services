@@ -291,6 +291,39 @@ echo "📝 Deployed HooksTrampoline address:"
 echo "  HooksTrampoline: $HOOKS_TRAMPOLINE"
 echo ""
 
+# Step 3.8: Deploy CoWShed Factory and Implementation
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "STEP 3.8: Deploying CoWShed (Factory + Implementation)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# First, build CoWShed contracts with the cow-shed profile
+echo "Building CoWShed contracts..."
+FOUNDRY_PROFILE=cow-shed forge build
+
+forge script contracts/script/DeployCoWShed.s.sol:DeployCoWShed \
+    --rpc-url $RPC_URL \
+    --broadcast \
+    --private-key $DEPLOYER_PRIVATE_KEY \
+    --skip-simulation \
+    -vvv
+
+echo ""
+echo "✅ CoWShed contracts deployed!"
+echo ""
+
+# Extract CoWShed addresses from broadcast (both are CREATE2 deployments)
+COWSHED_IMPLEMENTATION=$(jq -r '[.transactions[] | select(.transactionType == "CREATE2")] | .[0].contractAddress' broadcast/DeployCoWShed.s.sol/31337/run-latest.json)
+COWSHED_FACTORY=$(jq -r '[.transactions[] | select(.transactionType == "CREATE2")] | .[1].contractAddress' broadcast/DeployCoWShed.s.sol/31337/run-latest.json)
+
+# Export for next scripts
+export COWSHED_IMPLEMENTATION
+export COWSHED_FACTORY
+
+echo "📝 Deployed CoWShed addresses:"
+echo "  Implementation: $COWSHED_IMPLEMENTATION"
+echo "  Factory: $COWSHED_FACTORY"
+echo ""
+
 # Step 4: Add Liquidity (using direct method to bypass router)
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "STEP 4: Adding Initial Liquidity"
@@ -480,12 +513,13 @@ echo "✅ DEPLOYMENT COMPLETE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "📋 Deployment Summary:"
-echo "  ✅ Step 1: Tokens deployed (WETH, USDC, DAI)"
-echo "  ✅ Step 2: Uniswap V2 deployed (Factory, Router, 3 Pairs)"
+echo "  ✅ Step 1: Tokens deployed (WETH, USDC, DAI, USDT, GNO)"
+echo "  ✅ Step 2: Uniswap V2 deployed (Factory, Router, 10 Pairs)"
 echo "  ✅ Step 3: CoW Protocol deployed (Settlement, Auth, VaultRelayer)"
 echo "  ✅ Step 3.5: Balances contract deployed"
 echo "  ✅ Step 3.6: Signatures contract deployed"
 echo "  ✅ Step 3.7: HooksTrampoline contract deployed"
+echo "  ✅ Step 3.8: CoWShed deployed (Factory, Implementation)"
 echo "  ✅ Step 4: Liquidity added to all pairs"
 echo "  ✅ Step 4.5: Uniswap Router initialized (token approvals)"
 echo "  ✅ Step 5: Addresses exported to JSON"
