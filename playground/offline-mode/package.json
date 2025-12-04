@@ -5,6 +5,7 @@
   "scripts": {
     "start-anvil:fresh": "rm -rf state/anvil-state.json & ./scripts/start-anvil.sh",
     "deploy:all": "./scripts/deploy-all.sh",
+    "deploy:ts": "npx ts-node scripts/deploy-all.ts",
     "build": "forge build",
     "test:cowshed": "npx ts-node test/test-cowshed-order.ts",
     "test:order": "npx ts-node test/test-playground-order.ts"

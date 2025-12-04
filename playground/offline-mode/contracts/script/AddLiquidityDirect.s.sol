@@ -80,22 +80,22 @@ contract AddLiquidityDirect is Script {
         // WETH = $2000, USDC = $1, DAI = $1, USDT = $1, GNO = $100
 
         console.log("Adding liquidity to WETH pairs...");
-        addLiquidityToPair(factory, weth, usdc, 10 ether, 20_000 * 1e6, deployer);
-        addLiquidityToPair(factory, weth, dai, 10 ether, 20_000 * 1e18, deployer);
-        addLiquidityToPair(factory, weth, usdt, 10 ether, 20_000 * 1e6, deployer);
-        addLiquidityToPair(factory, weth, gno, 10 ether, 200 * 1e18, deployer);
+        addLiquidityToPair(factory, weth, usdc, 100 ether, 200_000 * 1e6, deployer);
+        addLiquidityToPair(factory, weth, dai, 100 ether, 200_000 * 1e18, deployer);
+        addLiquidityToPair(factory, weth, usdt, 100 ether, 200_000 * 1e6, deployer);
+        addLiquidityToPair(factory, weth, gno, 100 ether, 2_000 * 1e18, deployer);
 
         console.log("Adding liquidity to USDC pairs...");
-        addLiquidityToPair(factory, usdc, dai, 10_000 * 1e6, 10_000 * 1e18, deployer);
-        addLiquidityToPair(factory, usdc, usdt, 10_000 * 1e6, 10_000 * 1e6, deployer);
-        addLiquidityToPair(factory, usdc, gno, 10_000 * 1e6, 100 * 1e18, deployer);
+        addLiquidityToPair(factory, usdc, dai, 100_000 * 1e6, 100_000 * 1e18, deployer);
+        addLiquidityToPair(factory, usdc, usdt, 100_000 * 1e6, 100_000 * 1e6, deployer);
+        addLiquidityToPair(factory, usdc, gno, 100_000 * 1e6, 1_000 * 1e18, deployer);
 
         console.log("Adding liquidity to DAI pairs...");
-        addLiquidityToPair(factory, dai, usdt, 10_000 * 1e18, 10_000 * 1e6, deployer);
-        addLiquidityToPair(factory, dai, gno, 10_000 * 1e18, 100 * 1e18, deployer);
+        addLiquidityToPair(factory, dai, usdt, 100_000 * 1e18, 100_000 * 1e6, deployer);
+        addLiquidityToPair(factory, dai, gno, 100_000 * 1e18, 1_000 * 1e18, deployer);
 
         console.log("Adding liquidity to USDT-GNO pair...");
-        addLiquidityToPair(factory, usdt, gno, 10_000 * 1e6, 100 * 1e18, deployer);
+        addLiquidityToPair(factory, usdt, gno, 100_000 * 1e6, 1_000 * 1e18, deployer);
 
         vm.stopBroadcast();
 

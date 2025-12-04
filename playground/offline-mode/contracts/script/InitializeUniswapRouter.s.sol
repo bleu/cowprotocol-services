@@ -65,37 +65,30 @@ contract InitializeUniswapRouter is Script {
         console.log("");
         console.log("Approving ROUTER to spend tokens from SETTLEMENT contract...");
         console.log("Router address:", router);
-        
+
         uint256 maxAmount = type(uint256).max;
-        bytes32 maxAmountBytes = bytes32(maxAmount);
-        
-        // ERC20 storage layout: mapping(address => mapping(address => uint256)) public allowance
-        // Storage slot for allowance[settlement][router] = keccak256(abi.encode(router, keccak256(abi.encode(settlement, 0))))
-        // Slot 0 = balanceOf mapping, Slot 1 = allowance mapping (for standard ERC20)
-        
-        // For WETH: allowance slot
-        bytes32 wethSlot = keccak256(abi.encode(router, keccak256(abi.encode(settlement, uint256(1)))));
-        vm.store(weth, wethSlot, maxAmountBytes);
+
+        // Use vm.prank to impersonate the settlement contract and approve the router
+        // This creates proper transactions instead of direct storage manipulation
+
+        vm.prank(settlement);
+        IERC20(weth).approve(router, maxAmount);
         console.log("  WETH approved to router from settlement");
 
-        // For USDC: allowance slot
-        bytes32 usdcSlot = keccak256(abi.encode(router, keccak256(abi.encode(settlement, uint256(1)))));
-        vm.store(usdc, usdcSlot, maxAmountBytes);
+        vm.prank(settlement);
+        IERC20(usdc).approve(router, maxAmount);
         console.log("  USDC approved to router from settlement");
 
-        // For DAI: allowance slot
-        bytes32 daiSlot = keccak256(abi.encode(router, keccak256(abi.encode(settlement, uint256(1)))));
-        vm.store(dai, daiSlot, maxAmountBytes);
+        vm.prank(settlement);
+        IERC20(dai).approve(router, maxAmount);
         console.log("  DAI approved to router from settlement");
 
-        // For USDT: allowance slot
-        bytes32 usdtSlot = keccak256(abi.encode(router, keccak256(abi.encode(settlement, uint256(1)))));
-        vm.store(usdt, usdtSlot, maxAmountBytes);
+        vm.prank(settlement);
+        IERC20(usdt).approve(router, maxAmount);
         console.log("  USDT approved to router from settlement");
 
-        // For GNO: allowance slot
-        bytes32 gnoSlot = keccak256(abi.encode(router, keccak256(abi.encode(settlement, uint256(1)))));
-        vm.store(gno, gnoSlot, maxAmountBytes);
+        vm.prank(settlement);
+        IERC20(gno).approve(router, maxAmount);
         console.log("  GNO approved to router from settlement");
 
         console.log("");
