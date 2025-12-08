@@ -78,7 +78,7 @@ npm run test:order
 This will run with default parameters. For custom parameters, use ts-node directly:
 
 ```bash
-npx ts-node test/test-playground-order.ts --sellToken USDC --buyToken DAI --sellAmount 100e6 --from <PRIVATE_KEY>
+npm run test:order --sellToken USDC --buyToken DAI --sellAmount 100e6 --from 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
 **Parameters:**
