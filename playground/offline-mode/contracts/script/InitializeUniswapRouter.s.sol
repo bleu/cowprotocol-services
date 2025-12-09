@@ -17,6 +17,20 @@ interface IUniswapV2Router02 {
 /// @title InitializeUniswapRouter
 /// @notice Approve the router to spend tokens by directly setting ERC20 allowance storage
 contract InitializeUniswapRouter is Script {
+    /// @notice Set allowance by directly writing to storage slot
+    /// @dev This persists to Anvil state files, unlike vm.prank() transactions
+    function setAllowance(address token, address owner, address spender, uint256 amount) internal {
+        // Standard ERC20 allowance storage layout:
+        // mapping(address => mapping(address => uint256)) public allowance; // slot 1
+
+        // Calculate storage slot: keccak256(abi.encode(spender, keccak256(abi.encode(owner, 1))))
+        bytes32 ownerSlot = keccak256(abi.encode(owner, uint256(1)));
+        bytes32 allowanceSlot = keccak256(abi.encode(spender, ownerSlot));
+
+        // Set the allowance value
+        vm.store(token, allowanceSlot, bytes32(amount));
+    }
+
     function run() external {
         // Load deployer private key
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
@@ -65,30 +79,31 @@ contract InitializeUniswapRouter is Script {
         console.log("");
         console.log("Approving ROUTER to spend tokens from SETTLEMENT contract...");
         console.log("Router address:", router);
+        console.log("");
+        console.log("IMPORTANT: Using vm.store() to set approvals directly in storage");
+        console.log("This ensures approvals persist when state is saved/loaded in Anvil");
+        console.log("");
 
         uint256 maxAmount = type(uint256).max;
 
-        // Use vm.prank to impersonate the settlement contract and approve the router
-        // This creates proper transactions instead of direct storage manipulation
+        // Use vm.store to directly set the allowance storage slots
+        // This is necessary because vm.prank() transactions don't persist to Anvil state files
+        // ERC20 allowance storage: mapping(address => mapping(address => uint256)) at slot 1 (for most tokens)
+        // Storage slot = keccak256(abi.encode(spender, keccak256(abi.encode(owner, allowanceSlot))))
 
-        vm.prank(settlement);
-        IERC20(weth).approve(router, maxAmount);
+        setAllowance(weth, settlement, router, maxAmount);
         console.log("  WETH approved to router from settlement");
 
-        vm.prank(settlement);
-        IERC20(usdc).approve(router, maxAmount);
+        setAllowance(usdc, settlement, router, maxAmount);
         console.log("  USDC approved to router from settlement");
 
-        vm.prank(settlement);
-        IERC20(dai).approve(router, maxAmount);
+        setAllowance(dai, settlement, router, maxAmount);
         console.log("  DAI approved to router from settlement");
 
-        vm.prank(settlement);
-        IERC20(usdt).approve(router, maxAmount);
+        setAllowance(usdt, settlement, router, maxAmount);
         console.log("  USDT approved to router from settlement");
 
-        vm.prank(settlement);
-        IERC20(gno).approve(router, maxAmount);
+        setAllowance(gno, settlement, router, maxAmount);
         console.log("  GNO approved to router from settlement");
 
         console.log("");

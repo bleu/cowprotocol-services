@@ -2,8 +2,13 @@
  * Add Liquidity to Uniswap V2 Pools and Initialize Router
  */
 
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as path from 'path';
 import { DeploymentConfig, TokenAddresses, UniswapAddresses, CowProtocolAddresses } from './types';
 import { runForgeScript, printSection } from './utils';
+
+const execAsync = promisify(exec);
 
 export async function addLiquidity(
   config: DeploymentConfig,
@@ -53,33 +58,61 @@ export async function initializeRouter(
 ): Promise<void> {
   printSection('STEP 4.5: Initializing Uniswap Router (Token Approvals)');
 
-  const ALICE_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
+  // Use cast with anvil_impersonateAccount to set approvals
+  // This creates real transactions that persist in Anvil state
+  console.log('Setting approvals from Settlement to Router...');
+  console.log(`Settlement: ${cowProtocol.settlement}`);
+  console.log(`Router: ${uniswap.router}`);
+  console.log('');
 
-  // Now using vm.prank with actual approve() calls instead of vm.store()
-  // This creates proper transactions that won't corrupt Anvil state
-  await runForgeScript(
-    'contracts/script/InitializeUniswapRouter.s.sol',
-    'InitializeUniswapRouter',
-    config.rpcUrl,
-    config.deployerPrivateKey,
-    {
-      broadcast: true, // Now we can broadcast since we're using proper transactions
-      env: {
-        WETH_ADDRESS: tokens.WETH,
-        USDC_ADDRESS: tokens.USDC,
-        DAI_ADDRESS: tokens.DAI,
-        USDT_ADDRESS: tokens.USDT,
-        GNO_ADDRESS: tokens.GNO,
-        UNISWAP_FACTORY: uniswap.factory,
-        UNISWAP_ROUTER: uniswap.router,
-        COW_SETTLEMENT: cowProtocol.settlement,
-        SOLVER_ADDRESS: ALICE_ADDRESS,
-      },
+  const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+
+  const tokenList = [
+    { name: 'WETH', address: tokens.WETH },
+    { name: 'USDC', address: tokens.USDC },
+    { name: 'DAI', address: tokens.DAI },
+    { name: 'USDT', address: tokens.USDT },
+    { name: 'GNO', address: tokens.GNO },
+  ];
+
+  // First, fund the Settlement contract with ETH for gas
+  console.log('Funding Settlement contract with ETH for gas...');
+  const { stdout: fundOutput } = await execAsync(
+    `cast send ${cowProtocol.settlement} --value 10ether --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl}`,
+    { cwd: path.join(__dirname, '../..') }
+  );
+  console.log('  ✅ Settlement funded with 10 ETH');
+  console.log('');
+
+  // Enable impersonation
+  await execAsync(
+    `cast rpc anvil_impersonateAccount ${cowProtocol.settlement} --rpc-url ${config.rpcUrl}`,
+    { cwd: path.join(__dirname, '../..') }
+  );
+
+  // Approve each token
+  for (const token of tokenList) {
+    console.log(`Approving ${token.name}...`);
+    try {
+      const { stdout: approveOutput } = await execAsync(
+        `cast send ${token.address} "approve(address,uint256)" ${uniswap.router} ${MAX_UINT256} --from ${cowProtocol.settlement} --rpc-url ${config.rpcUrl} --unlocked --gas-limit 100000`,
+        { cwd: path.join(__dirname, '../..') }
+      );
+      console.log(`  ✅ ${token.name} approved`);
+    } catch (error) {
+      console.error(`  ❌ Failed to approve ${token.name}:`, error);
+      throw error;
     }
+  }
+
+  // Disable impersonation
+  await execAsync(
+    `cast rpc anvil_stopImpersonatingAccount ${cowProtocol.settlement} --rpc-url ${config.rpcUrl}`,
+    { cwd: path.join(__dirname, '../..') }
   );
 
   console.log('');
-  console.log('✅ Router initialized!');
+  console.log('✅ Router initialized with all token approvals!');
   console.log('');
 }
 

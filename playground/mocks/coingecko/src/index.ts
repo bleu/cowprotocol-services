@@ -1,6 +1,14 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
-import { getTokenPrice, getSupportedTokens } from './tokens.config';
+import { getSupportedTokens, isTokenSupported } from './tokens.config';
+import { UniswapPriceFetcher } from './uniswap-price-fetcher';
+
+// Initialize Uniswap price fetcher
+const priceFetcher = new UniswapPriceFetcher({
+  rpcUrl: process.env.ETH_RPC_URL || 'http://chain:8545',
+  factoryAddress: process.env.UNISWAP_FACTORY || '0x75bb62d11fc5aa893827203d977e0931d269580d',
+  wethAddress: process.env.WETH_ADDRESS || '0x923f26d85d25c0abb51d643f105dca62b13374c2',
+});
 
 const app = new Hono();
 
@@ -31,7 +39,7 @@ app.get('/api/v3/tokens', (c) => {
  * Example:
  * GET /api/v3/simple/token_price/ethereum?contract_addresses=0xabc,0xdef&vs_currencies=eth&precision=full
  */
-app.get('/api/v3/simple/token_price/:platform', (c) => {
+app.get('/api/v3/simple/token_price/:platform', async (c) => {
   const platform = c.req.param('platform');
   const contractAddresses = c.req.query('contract_addresses');
   const vsCurrencies = c.req.query('vs_currencies');
@@ -85,22 +93,29 @@ app.get('/api/v3/simple/token_price/:platform', (c) => {
   // Parse contract addresses
   const addresses = contractAddresses.split(',').map((addr) => addr.trim().toLowerCase());
 
+  // Filter only supported tokens
+  const supportedAddresses = addresses.filter(isTokenSupported);
+  const unsupportedAddresses = addresses.filter((addr) => !isTokenSupported(addr));
+
+  // Fetch prices from Uniswap
+  const prices = await priceFetcher.getTokenPrices(supportedAddresses);
+
   // Build response object matching Coingecko's format
   const response: Record<string, { eth: number } | {}> = {};
 
   for (const address of addresses) {
-    const price = getTokenPrice(address);
+    const price = prices.get(address);
 
-    if (price !== null) {
-      // Token is supported, return price
+    if (price !== undefined) {
+      // Token is supported and price was fetched
       response[address] = {
         eth: price,
       };
       console.log(`  ✓ ${address}: ${price} ETH`);
     } else {
-      // Token not supported, return empty object (Coingecko behavior)
+      // Token not supported or price couldn't be fetched, return empty object (Coingecko behavior)
       response[address] = {};
-      console.log(`  ✗ ${address}: not supported`);
+      console.log(`  ✗ ${address}: not available`);
     }
   }
 

@@ -48,19 +48,15 @@ async function main() {
   try {
     // Step 1: Deploy Tokens
     const tokens = await deployTokens(config);
-    saveAddressesJson({ chainId: CHAIN_ID, tokens });
 
     // Step 2: Deploy Uniswap V2
     const uniswap = await deployUniswap(config, tokens);
-    saveAddressesJson({ chainId: CHAIN_ID, tokens, uniswap });
 
     // Step 3: Deploy CoW Protocol Core
     const cowProtocol = await deployCowProtocol(config);
-    saveAddressesJson({ chainId: CHAIN_ID, tokens, uniswap, cowProtocol });
 
     // Step 4: Deploy Auxiliary Contracts
     const auxiliary = await deployAuxiliary(config, cowProtocol);
-    saveAddressesJson({ chainId: CHAIN_ID, tokens, uniswap, cowProtocol, auxiliary });
 
     // Step 5: Add Liquidity
     await addLiquidity(config, tokens, uniswap);
@@ -76,10 +72,10 @@ async function main() {
       auxiliary,
     };
 
-    // Final save
-    saveAddressesJson({ chainId: CHAIN_ID, ...allAddresses });
+    // Step 7: Export Addresses to JSON using Forge script (maintains correct structure)
+    await exportAddresses(config.rpcUrl, allAddresses);
 
-    // Step 7: Generate Configuration Files
+    // Step 8: Generate Configuration Files
     await generateConfigs(allAddresses);
 
     // Print summary
@@ -95,10 +91,10 @@ async function main() {
     console.log('  ✅ Step 3.6: Signatures contract deployed');
     console.log('  ✅ Step 3.7: HooksTrampoline contract deployed');
     console.log('  ✅ Step 3.8: CoWShed deployed (Factory, Implementation)');
-    console.log('  ✅ Step 4: Liquidity added to all pairs');
-    console.log('  ✅ Step 4.5: Uniswap Router initialized (token approvals)');
-    console.log('  ✅ Step 5: Addresses exported to JSON');
-    console.log('  ✅ Step 6: Configuration files generated');
+    console.log('  ✅ Step 5: Liquidity added to all pairs');
+    console.log('  ✅ Step 6: Uniswap Router initialized (token approvals)');
+    console.log('  ✅ Step 7: Addresses exported to JSON');
+    console.log('  ✅ Step 8: Configuration files generated');
     console.log('');
     console.log('📁 Output files:');
     console.log('  - offline-mode/config/addresses.json (deployment addresses)');

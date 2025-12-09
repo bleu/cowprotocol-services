@@ -1,7 +1,7 @@
 /**
  * Token configuration for Coingecko mock API
  *
- * Prices are denominated in ETH as per Coingecko's API format.
+ * Prices are fetched dynamically from Uniswap V2 pairs.
  * These are the 5 tokens deployed in offline mode with deterministic addresses.
  *
  * Addresses from: playground/offline-mode/config/addresses.json
@@ -12,7 +12,6 @@ export interface TokenConfig {
   symbol: string;
   name: string;
   decimals: number;
-  priceInEth: number;
 }
 
 export const TOKENS: Record<string, TokenConfig> = {
@@ -22,7 +21,6 @@ export const TOKENS: Record<string, TokenConfig> = {
     symbol: 'WETH',
     name: 'Wrapped Ether',
     decimals: 18,
-    priceInEth: 1.0, // 1 WETH = 1 ETH by definition
   },
 
   // DAI - Dai Stablecoin
@@ -31,7 +29,6 @@ export const TOKENS: Record<string, TokenConfig> = {
     symbol: 'DAI',
     name: 'Dai Stablecoin',
     decimals: 18,
-    priceInEth: 0.0004, // Assuming 1 DAI ≈ $1 and 1 ETH ≈ $2500
   },
 
   // USDC - USD Coin
@@ -40,7 +37,6 @@ export const TOKENS: Record<string, TokenConfig> = {
     symbol: 'USDC',
     name: 'USD Coin',
     decimals: 6,
-    priceInEth: 0.0004, // Assuming 1 USDC ≈ $1 and 1 ETH ≈ $2500
   },
 
   // USDT - Tether USD
@@ -49,7 +45,6 @@ export const TOKENS: Record<string, TokenConfig> = {
     symbol: 'USDT',
     name: 'Tether USD',
     decimals: 6,
-    priceInEth: 0.0004, // Assuming 1 USDT ≈ $1 and 1 ETH ≈ $2500
   },
 
   // GNO - Gnosis Token
@@ -58,17 +53,15 @@ export const TOKENS: Record<string, TokenConfig> = {
     symbol: 'GNO',
     name: 'Gnosis Token',
     decimals: 18,
-    priceInEth: 0.05, // Assuming 1 GNO ≈ $125 and 1 ETH ≈ $2500
   },
 };
 
 /**
- * Get token price by address (case-insensitive)
+ * Get token config by address (case-insensitive)
  */
-export function getTokenPrice(address: string): number | null {
+export function getTokenConfig(address: string): TokenConfig | null {
   const normalizedAddress = address.toLowerCase();
-  const token = TOKENS[normalizedAddress];
-  return token ? token.priceInEth : null;
+  return TOKENS[normalizedAddress] || null;
 }
 
 /**

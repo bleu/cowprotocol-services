@@ -37,19 +37,25 @@ export async function runForgeScript(
     `${scriptPath}:${scriptName}`,
     `--rpc-url ${rpcUrl}`,
     broadcast ? '--broadcast' : '',
-    `--private-key ${privateKey}`,
+    privateKey ? `--private-key ${privateKey}` : '',
     skipSimulation ? '--skip-simulation' : '',
     `-${'v'.repeat(verbosity)}`,
   ].filter(Boolean).join(' ');
 
   console.log(`Running: ${args}`);
 
+  const envVars = {
+    ...process.env,
+    ...env,
+  } as NodeJS.ProcessEnv;
+
+  // Only add DEPLOYER_PRIVATE_KEY if privateKey is provided
+  if (privateKey) {
+    envVars.DEPLOYER_PRIVATE_KEY = privateKey;
+  }
+
   const { stdout, stderr } = await execAsync(args, {
-    env: {
-      ...process.env,
-      DEPLOYER_PRIVATE_KEY: privateKey, // Always pass private key to forge scripts
-      ...env,
-    },
+    env: envVars,
     cwd: path.join(__dirname, '../..'),
   });
 
