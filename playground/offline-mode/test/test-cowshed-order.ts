@@ -13,8 +13,7 @@
  */
 
 import { ethers } from 'ethers';
-import * as fs from 'fs';
-import * as path from 'path';
+import { loadAddresses } from './utils/loadAddresses';
 
 // Configuration
 const CONFIG = {
@@ -25,9 +24,8 @@ const CONFIG = {
   privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
 };
 
-// Load deployed addresses (path relative to scripts directory)
-const addressesPath = path.join(__dirname, '../config/addresses.json');
-const addresses = JSON.parse(fs.readFileSync(addressesPath, 'utf8'));
+// Load deployed addresses from .env.offline
+const addresses = loadAddresses();
 
 // Contract addresses
 const ADDRESSES = {

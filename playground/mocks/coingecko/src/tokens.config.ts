@@ -2,9 +2,7 @@
  * Token configuration for Coingecko mock API
  *
  * Prices are fetched dynamically from Uniswap V2 pairs.
- * These are the 5 tokens deployed in offline mode with deterministic addresses.
- *
- * Addresses from: playground/offline-mode/config/addresses.json
+ * Token addresses are loaded from environment variables (from .env.offline).
  */
 
 export interface TokenConfig {
@@ -14,47 +12,66 @@ export interface TokenConfig {
   decimals: number;
 }
 
-export const TOKENS: Record<string, TokenConfig> = {
-  // WETH - Wrapped Ether
-  '0x923f26d85d25c0abb51d643f105dca62b13374c2': {
-    address: '0x923f26d85d25c0abb51d643f105dca62b13374c2',
-    symbol: 'WETH',
-    name: 'Wrapped Ether',
-    decimals: 18,
-  },
+// Load token addresses from environment variables
+const WETH_ADDRESS = (process.env.WETH_ADDRESS || '').toLowerCase();
+const DAI_ADDRESS = (process.env.DAI_ADDRESS || '').toLowerCase();
+const USDC_ADDRESS = (process.env.USDC_ADDRESS || '').toLowerCase();
+const USDT_ADDRESS = (process.env.USDT_ADDRESS || '').toLowerCase();
+const GNO_ADDRESS = (process.env.GNO_ADDRESS || '').toLowerCase();
 
-  // DAI - Dai Stablecoin
-  '0xa3b4bb9a29a954c5236080c331e32fb4434e4229': {
-    address: '0xa3b4bb9a29a954c5236080c331e32fb4434e4229',
-    symbol: 'DAI',
-    name: 'Dai Stablecoin',
-    decimals: 18,
-  },
+// Build token config dynamically from environment variables
+function buildTokenConfig(): Record<string, TokenConfig> {
+  const tokens: Record<string, TokenConfig> = {};
 
-  // USDC - USD Coin
-  '0x78e24297cb4911956a3017dba2d82463c9c01555': {
-    address: '0x78e24297cb4911956a3017dba2d82463c9c01555',
-    symbol: 'USDC',
-    name: 'USD Coin',
-    decimals: 6,
-  },
+  if (WETH_ADDRESS) {
+    tokens[WETH_ADDRESS] = {
+      address: WETH_ADDRESS,
+      symbol: 'WETH',
+      name: 'Wrapped Ether',
+      decimals: 18,
+    };
+  }
 
-  // USDT - Tether USD
-  '0x52eea99f47938350e5bafed3bedcf886d116b061': {
-    address: '0x52eea99f47938350e5bafed3bedcf886d116b061',
-    symbol: 'USDT',
-    name: 'Tether USD',
-    decimals: 6,
-  },
+  if (DAI_ADDRESS) {
+    tokens[DAI_ADDRESS] = {
+      address: DAI_ADDRESS,
+      symbol: 'DAI',
+      name: 'Dai Stablecoin',
+      decimals: 18,
+    };
+  }
 
-  // GNO - Gnosis Token
-  '0x869b46ffaae323ff22d4a5a92e14141542693ebe': {
-    address: '0x869b46ffaae323ff22d4a5a92e14141542693ebe',
-    symbol: 'GNO',
-    name: 'Gnosis Token',
-    decimals: 18,
-  },
-};
+  if (USDC_ADDRESS) {
+    tokens[USDC_ADDRESS] = {
+      address: USDC_ADDRESS,
+      symbol: 'USDC',
+      name: 'USD Coin',
+      decimals: 6,
+    };
+  }
+
+  if (USDT_ADDRESS) {
+    tokens[USDT_ADDRESS] = {
+      address: USDT_ADDRESS,
+      symbol: 'USDT',
+      name: 'Tether USD',
+      decimals: 6,
+    };
+  }
+
+  if (GNO_ADDRESS) {
+    tokens[GNO_ADDRESS] = {
+      address: GNO_ADDRESS,
+      symbol: 'GNO',
+      name: 'Gnosis Token',
+      decimals: 18,
+    };
+  }
+
+  return tokens;
+}
+
+export const TOKENS: Record<string, TokenConfig> = buildTokenConfig();
 
 /**
  * Get token config by address (case-insensitive)

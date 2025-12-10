@@ -5,8 +5,8 @@ import { UniswapPriceFetcher } from './uniswap-price-fetcher';
 
 // Initialize Uniswap price fetcher
 const priceFetcher = new UniswapPriceFetcher({
-  rpcUrl: process.env.ETH_RPC_URL || 'http://chain:8545',
-  factoryAddress: process.env.UNISWAP_FACTORY || '0x75bb62d11fc5aa893827203d977e0931d269580d',
+  rpcUrl: process.env.ETH_RPC_URL || process.env.NODE_URL || 'http://chain:8545',
+  factoryAddress: process.env.UNISWAP_V2_FACTORY_ADDRESS || '0x75bb62d11fc5aa893827203d977e0931d269580d',
   wethAddress: process.env.WETH_ADDRESS || '0x923f26d85d25c0abb51d643f105dca62b13374c2',
 });
 

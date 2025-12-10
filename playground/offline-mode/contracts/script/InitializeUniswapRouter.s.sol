@@ -3,16 +3,7 @@ pragma solidity ^0.8.26;
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
-
-interface IERC20 {
-    function approve(address spender, uint256 amount) external returns (bool);
-    function balanceOf(address account) external view returns (uint256);
-}
-
-interface IUniswapV2Router02 {
-    function WETH() external pure returns (address);
-    function factory() external pure returns (address);
-}
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 /// @title InitializeUniswapRouter
 /// @notice Approve the router to spend tokens by directly setting ERC20 allowance storage

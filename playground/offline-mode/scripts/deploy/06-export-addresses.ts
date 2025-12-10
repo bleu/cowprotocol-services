@@ -1,68 +1,14 @@
 /**
- * Export Addresses and Generate Configuration Files
+ * Generate Configuration Files
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { AllAddresses } from './types';
-import { runForgeScript, printSection } from './utils';
-
-export async function exportAddresses(
-  rpcUrl: string,
-  allAddresses: AllAddresses
-): Promise<void> {
-  printSection('STEP 5: Exporting Deployed Addresses to JSON');
-
-  // Set all addresses as environment variables for the ExportAddresses script
-  const env = {
-    WETH_ADDRESS: allAddresses.tokens.WETH,
-    USDC_ADDRESS: allAddresses.tokens.USDC,
-    DAI_ADDRESS: allAddresses.tokens.DAI,
-    USDT_ADDRESS: allAddresses.tokens.USDT,
-    GNO_ADDRESS: allAddresses.tokens.GNO,
-    UNISWAP_FACTORY: allAddresses.uniswap.factory,
-    UNISWAP_ROUTER: allAddresses.uniswap.router,
-    PAIR_WETH_USDC: allAddresses.uniswap.pairs.WETH_USDC,
-    PAIR_WETH_DAI: allAddresses.uniswap.pairs.WETH_DAI,
-    PAIR_WETH_USDT: allAddresses.uniswap.pairs.WETH_USDT,
-    PAIR_WETH_GNO: allAddresses.uniswap.pairs.WETH_GNO,
-    PAIR_USDC_DAI: allAddresses.uniswap.pairs.USDC_DAI,
-    PAIR_USDC_USDT: allAddresses.uniswap.pairs.USDC_USDT,
-    PAIR_USDC_GNO: allAddresses.uniswap.pairs.USDC_GNO,
-    PAIR_DAI_USDT: allAddresses.uniswap.pairs.DAI_USDT,
-    PAIR_DAI_GNO: allAddresses.uniswap.pairs.DAI_GNO,
-    PAIR_USDT_GNO: allAddresses.uniswap.pairs.USDT_GNO,
-    COW_SETTLEMENT: allAddresses.cowProtocol.settlement,
-    COW_AUTHENTICATOR: allAddresses.cowProtocol.authenticator,
-    COW_VAULT_RELAYER: allAddresses.cowProtocol.vaultRelayer,
-    BALANCER_VAULT: allAddresses.cowProtocol.balancerVault,
-    TRADE_SIMULATOR_ADDRESS: allAddresses.auxiliary.tradeSimulator,
-    BALANCES_CONTRACT: allAddresses.auxiliary.tradeSimulator,
-    SIGNATURES_CONTRACT: allAddresses.auxiliary.signatures,
-    HOOKS_TRAMPOLINE: allAddresses.auxiliary.hooksTrampoline,
-    COWSHED_IMPLEMENTATION: allAddresses.auxiliary.cowShed.implementation,
-    COWSHED_FACTORY: allAddresses.auxiliary.cowShed.factory,
-  };
-
-  await runForgeScript(
-    'contracts/script/ExportAddresses.s.sol',
-    'ExportAddresses',
-    rpcUrl,
-    '', // No private key needed for view-only script
-    {
-      broadcast: false,
-      verbosity: 2,
-      env,
-    }
-  );
-
-  console.log('');
-  console.log('✅ Addresses exported to config/addresses.json');
-  console.log('');
-}
+import { printSection } from './utils';
 
 export async function generateConfigs(allAddresses: AllAddresses): Promise<void> {
-  printSection('STEP 6: Generating Configuration Files');
+  printSection('STEP 5: Generating Configuration Files');
 
   console.log('Generating configuration files...');
 
@@ -161,6 +107,10 @@ BALANCER_VAULT_ADDRESS=${allAddresses.cowProtocol.balancerVault}
 BALANCES_CONTRACT_ADDRESS=${allAddresses.auxiliary.tradeSimulator}
 SIGNATURES_CONTRACT_ADDRESS=${allAddresses.auxiliary.signatures}
 HOOKS_CONTRACT_ADDRESS=${allAddresses.auxiliary.hooksTrampoline}
+
+# CoWShed Addresses
+COWSHED_FACTORY_ADDRESS=${allAddresses.auxiliary.cowShed.factory}
+COWSHED_IMPLEMENTATION_ADDRESS=${allAddresses.auxiliary.cowShed.implementation}
 `;
 
   fs.writeFileSync(path.join(playgroundDir, '.env.offline'), envOffline);

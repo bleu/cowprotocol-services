@@ -14,8 +14,8 @@
  */
 
 import { ethers } from 'ethers';
-import * as fs from 'fs';
 import * as path from 'path';
+import { loadAddresses } from './utils/loadAddresses';
 
 // Configuration
 const CONFIG = {
@@ -34,9 +34,8 @@ const TOKEN_DECIMALS: Record<string, number> = {
   USDT: 6,
 };
 
-// Load deployed addresses
-const addressesPath = path.join(__dirname, '../config/addresses.json');
-const addresses = JSON.parse(fs.readFileSync(addressesPath, 'utf8'));
+// Load deployed addresses from .env.offline
+const addresses = loadAddresses();
 
 // EIP-712 Type definitions for CoW Protocol orders
 const ORDER_TYPE_FIELDS = [
@@ -161,9 +160,9 @@ function parseArgs(): ParsedArgs {
 }
 
 function getTokenAddress(symbol: string): string {
-  const address = addresses.tokens[symbol];
+  const address = addresses.tokens[symbol as keyof typeof addresses.tokens];
   if (!address) {
-    console.error(`Error: Token ${symbol} not found in addresses.json`);
+    console.error(`Error: Token ${symbol} not found in .env.offline`);
     console.error(`Available tokens: ${Object.keys(addresses.tokens).join(', ')}`);
     process.exit(1);
   }

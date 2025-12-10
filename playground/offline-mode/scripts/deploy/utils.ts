@@ -176,34 +176,6 @@ export async function castSend(
   }
 }
 
-/**
- * Save addresses to JSON file
- */
-export function saveAddressesJson(addresses: any): void {
-  const filePath = path.join(__dirname, '../..', 'config/addresses.json');
-  const dir = path.dirname(filePath);
-
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  fs.writeFileSync(filePath, JSON.stringify(addresses, null, 2) + '\n');
-  console.log(`✅ Saved to config/addresses.json`);
-}
-
-/**
- * Load addresses from JSON file
- */
-export function loadAddressesJson(): any {
-  const filePath = path.join(__dirname, '../..', 'config/addresses.json');
-
-  if (!fs.existsSync(filePath)) {
-    return {};
-  }
-
-  const content = fs.readFileSync(filePath, 'utf8');
-  return JSON.parse(content);
-}
 
 /**
  * Print a section header
@@ -220,4 +192,41 @@ export function printSection(title: string): void {
  */
 export function printDeployment(name: string, address: string): void {
   console.log(`  ${name}: ${address}`);
+}
+
+/**
+ * Print deployment summary
+ */
+export function printDeploymentSummary(): void {
+  console.log('📋 Deployment Summary:');
+  console.log('  ✅ Step 1: Tokens deployed (WETH, USDC, DAI, USDT, GNO)');
+  console.log('  ✅ Step 2: Uniswap V2 deployed (Factory, Router, 10 Pairs)');
+  console.log('  ✅ Step 3: CoW Protocol deployed (Settlement, Auth, VaultRelayer)');
+  console.log('  ✅ Step 3.5: TradeSimulator contract deployed');
+  console.log('  ✅ Step 3.6: Signatures contract deployed');
+  console.log('  ✅ Step 3.7: HooksTrampoline contract deployed');
+  console.log('  ✅ Step 3.8: CoWShed deployed (Factory, Implementation)');
+  console.log('  ✅ Step 5: Liquidity added to all pairs');
+  console.log('  ✅ Step 6: Uniswap Router initialized (token approvals)');
+  console.log('  ✅ Step 7: Addresses exported to JSON');
+  console.log('  ✅ Step 8: Configuration files generated');
+}
+
+/**
+ * Print output files information
+ */
+export function printOutputFiles(): void {
+  console.log('📁 Output files:');
+  console.log('  - playground/.env.offline (deployment addresses, auto-generated)');
+  console.log('  - offline-mode/configs/offline/driver.toml (auto-generated)');
+  console.log('  - offline-mode/configs/offline/baseline.toml (auto-generated)');
+}
+
+/**
+ * Print next steps
+ */
+export function printNextSteps(): void {
+  console.log('🚀 Next: Start the full stack with:');
+  console.log('  cd ../../playground');
+  console.log('  docker compose -f docker-compose.offline.yml up');
 }

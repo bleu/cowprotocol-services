@@ -158,18 +158,47 @@ poc-offline-mode/config/addresses.json
 Example:
 ```json
 {
-  "chainId": "31337",
+  "chainId": 31337,
   "tokens": {
-    "WETH": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-    "USDC": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-    "DAI": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+    "WETH": "0x923F26D85D25C0AbB51d643F105DcA62b13374C2",
+    "USDC": "0x78e24297cb4911956A3017dBa2d82463c9c01555",
+    "DAI": "0xA3B4bb9A29a954C5236080C331E32fB4434e4229",
+    "USDT": "0x52eEA99F47938350E5BaFEd3bEdcF886d116b061",
+    "GNO": "0x869b46ffAAE323ff22d4a5A92e14141542693EbE"
+  },
+  "uniswap": {
+    "factory": "0x75BB62D11fC5aA893827203D977e0931D269580D",
+    "router": "0x2A444154BC6a6228FcA4225C939f650886655fED",
+    "pairs": {
+      "WETH_USDC": "0x95BB40fA565c47086A879738320f70b5536801bA",
+      "WETH_DAI": "0xDF07533453d6e041B756001DfB5986E149D46E6c",
+      "WETH_USDT": "0x06f0349F3684086715Fa21395795275383E29f89",
+      "WETH_GNO": "0xb898217aB617B331BC584521131911A8ca7b24de",
+      "USDC_DAI": "0x23946DA7ED86d371d3606409350a59b0874d640A",
+      "USDC_USDT": "0x048683Aa87c603Ff55514BC5BA08f9D0Aaa1B6d5",
+      "USDC_GNO": "0xE59c5a96C44355E3d075F89B414679Fac91B2efF",
+      "DAI_USDT": "0x54185ff1C4442FcA50456bc4bd18A0e9A3669698",
+      "DAI_GNO": "0x27746D7E586f0343ec8E428612F4470249EcFf8c",
+      "USDT_GNO": "0x6389094E07770816FB940a68D86C93808Ce30D55"
+    }
   },
   "cowProtocol": {
-    "settlement": "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
-    "vaultRelayer": "0x8dAF17A20c9DBA35f005b6324F493785D239719d",
-    "balancerVault": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318"
+    "authenticator": "0xEe308BBdaafBd435312741ABed5883278Aa6a783",
+    "settlement": "0x8c0332128D2B6a19e687Aa16DB9C779106028F6f",
+    "vaultRelayer": "0x29b90c7D3fb8725061F089c7cAA1143783b55980",
+    "balancerVault": "0xC06FA9877b907F58677EF3246D21760411FCFcFa",
+    "hooksTrampoline": "0x20DDAbae0B223E0e9d6287c719Fc472E76d18eA5"
+  },
+  "auxiliary": {
+    "tradeSimulator": "0xe5e977b8f1699433f05e8E18a20806Bce2a0Fcc0",
+    "signatures": "0xA6BB44Ec3C9D05aeDC4c534B63bC7811D4B94eeC"
+  },
+  "cowShed": {
+    "factory": "0xDb086A44b9db2650e9e3c1F21Fc7ba6B7d4B6681",
+    "implementation": "0xCeEEA420F4DaE4E0405F0E218B8da6114D01ddE3"
   }
 }
+
 ```
 
 ## Building Contracts from Source
@@ -248,45 +277,6 @@ If you want to deploy everything from scratch (instead of loading the existing s
    ```bash
    docker-compose -f docker-compose.offline.yml up -d
    ```
-
-### Important Note: UniswapV2Library Init Code Hash
-
-⚠️ **Known Issue**: If you deploy from scratch, you may need to update the init code hash in UniswapV2Library.sol
-
-The Uniswap V2 Router uses a hardcoded init code hash to compute pair addresses via CREATE2. The hash differs between Foundry and Hardhat/Truffle deployments.
-
-**Mainnet hash** (original):
-```solidity
-hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f'
-```
-
-**Foundry hash** (for local deployment):
-```solidity
-hex'b6912aa8f91da604bdd903b3484a9f6bb569baa993085fc590133487ff27f91e'
-```
-
-**Location**: `contracts/lib/v2-periphery/contracts/libraries/UniswapV2Library.sol` (line 24)
-
-**How to fix**:
-```solidity
-// calculates the CREATE2 address for a pair without making any external calls
-function pairFor(address factory, address tokenA, address tokenB) internal pure returns (address pair) {
-    (address token0, address token1) = sortTokens(tokenA, tokenB);
-    pair = address(uint(keccak256(abi.encodePacked(
-            hex'ff',
-            factory,
-            keccak256(abi.encodePacked(token0, token1)),
-            hex'b6912aa8f91da604bdd903b3484a9f6bb569baa993085fc590133487ff27f91e' // Foundry init code hash
-        ))));
-}
-```
-
-After updating, rebuild the periphery contracts:
-```bash
-forge build --profile uniswap-v2-periphery
-```
-
-**Note**: The current `poc-state.json` already has the correct hash deployed, so this is only needed if deploying from scratch.
 
 ## Configuration Files
 
