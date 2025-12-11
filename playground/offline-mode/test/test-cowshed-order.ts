@@ -81,7 +81,7 @@ function computeAppDataHash(appDataContent: object): string {
 }
 
 async function main() {
-  console.log('🐮 CoWShed Integration Test (Corrected)');
+  console.log('🐮 CoWShed Integration Test');
   console.log('=========================================\n');
 
   // Setup provider and wallet
