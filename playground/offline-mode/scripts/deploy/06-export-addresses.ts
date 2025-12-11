@@ -13,7 +13,8 @@ export async function generateConfigs(allAddresses: AllAddresses): Promise<void>
   console.log('Generating configuration files...');
 
   const configsDir = path.join(__dirname, '../../configs/offline');
-  const playgroundDir = path.join(__dirname, '../../../');
+  // In Docker: /playground is mounted, locally: calculate relative path
+  const playgroundDir = process.env.DOCKER_ENV ? '/playground' : path.join(__dirname, '../../..');
 
   // Ensure directories exist
   fs.mkdirSync(configsDir, { recursive: true });
@@ -115,6 +116,12 @@ COWSHED_IMPLEMENTATION_ADDRESS=${allAddresses.auxiliary.cowShed.implementation}
 
   fs.writeFileSync(path.join(playgroundDir, '.env.offline'), envOffline);
   console.log('  ✅ Generated playground/.env.offline');
+
+  // Also save a backup to the state directory so it persists with the blockchain state
+  const stateDir = path.join(__dirname, '../../state');
+  fs.mkdirSync(stateDir, { recursive: true });
+  fs.writeFileSync(path.join(stateDir, '.env.offline.backup'), envOffline);
+  console.log('  ✅ Backup saved to state/.env.offline.backup');
 
   console.log('');
   console.log('✅ Configuration files generated!');
