@@ -1,5 +1,5 @@
 /**
- * CoWShed Integration Test Script (CORRECTED)
+ * CoWShed Integration Test Script
  *
  * This script demonstrates the CORRECT use of CoWShed with CoW Protocol:
  * - Assets stay in user EOA (not transferred to proxy)
