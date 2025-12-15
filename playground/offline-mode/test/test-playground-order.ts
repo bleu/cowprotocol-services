@@ -14,8 +14,8 @@
  */
 
 import { ethers } from 'ethers';
-import * as fs from 'fs';
 import * as path from 'path';
+import { loadAddresses } from './utils/loadAddresses';
 
 // Configuration
 const CONFIG = {
@@ -34,9 +34,8 @@ const TOKEN_DECIMALS: Record<string, number> = {
   USDT: 6,
 };
 
-// Load deployed addresses
-const addressesPath = path.join(__dirname, '../config/addresses.json');
-const addresses = JSON.parse(fs.readFileSync(addressesPath, 'utf8'));
+// Load deployed addresses from .env.offline
+const addresses = loadAddresses();
 
 // EIP-712 Type definitions for CoW Protocol orders
 const ORDER_TYPE_FIELDS = [
@@ -75,6 +74,7 @@ interface ParsedArgs {
   sellAmount?: string;
   buyAmount?: string;
   from: string;
+  surplusPercent?: number;
 }
 
 function printUsage(): void {
@@ -87,18 +87,21 @@ Options:
   --sellAmount <AMOUNT>     Amount to sell (e.g., 10e18, 1000e6) - mutually exclusive with --buyAmount
   --buyAmount <AMOUNT>      Amount to buy (e.g., 10e18, 1000e6) - mutually exclusive with --sellAmount
   --from <PRIVATE_KEY>      Trader private key (will be used as sender and receiver)
+  --surplus <PERCENT>       Surplus percentage to add (e.g., 2 for 2% surplus, default: 2)
   -h, --help                Show this help message
 
 Examples:
   npx ts-node test/test-playground-order.ts --sellToken GNO --buyToken WETH --sellAmount 10e18 --from 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
-  npx ts-node test/test-playground-order.ts --sellToken USDC --buyToken DAI --buyAmount 100e18 --from 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
+  npx ts-node test/test-playground-order.ts --sellToken USDC --buyToken DAI --buyAmount 100e18 --surplus 5 --from 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
 `);
   process.exit(1);
 }
 
 function parseArgs(): ParsedArgs {
   const args = process.argv.slice(2);
-  const parsed: Partial<ParsedArgs> = {};
+  const parsed: Partial<ParsedArgs> = {
+    surplusPercent: 2, // Default 2% surplus
+  };
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -116,6 +119,9 @@ function parseArgs(): ParsedArgs {
         break;
       case '--from':
         parsed.from = args[++i];
+        break;
+      case '--surplus':
+        parsed.surplusPercent = parseFloat(args[++i]);
         break;
       case '-h':
       case '--help':
@@ -154,9 +160,9 @@ function parseArgs(): ParsedArgs {
 }
 
 function getTokenAddress(symbol: string): string {
-  const address = addresses.tokens[symbol];
+  const address = addresses.tokens[symbol as keyof typeof addresses.tokens];
   if (!address) {
-    console.error(`Error: Token ${symbol} not found in addresses.json`);
+    console.error(`Error: Token ${symbol} not found in .env.offline`);
     console.error(`Available tokens: ${Object.keys(addresses.tokens).join(', ')}`);
     process.exit(1);
   }
@@ -350,9 +356,16 @@ async function main() {
   const validTo = quote.quote.validTo;
   const appDataHash = quote.quote.appData;
 
+  // Apply surplus by reducing the buy amount (willing to accept less)
+  // This creates surplus opportunity for the solver
+  const surplusMultiplier = 1 - (args.surplusPercent! / 100);
+  const adjustedBuyAmount = (BigInt(quoteBuyAmount) * BigInt(Math.floor(surplusMultiplier * 10000)) / 10000n).toString();
+
   console.log('  Quote received:');
   console.log(`    Sell amount: ${formatBalance(BigInt(quoteSellAmount), sellTokenDecimals)} ${args.sellToken}`);
-  console.log(`    Buy amount: ${formatBalance(BigInt(quoteBuyAmount), buyTokenDecimals)} ${args.buyToken}`);
+  console.log(`    Buy amount (from quote): ${formatBalance(BigInt(quoteBuyAmount), buyTokenDecimals)} ${args.buyToken}`);
+  console.log(`    Buy amount (with ${args.surplusPercent}% surplus): ${formatBalance(BigInt(adjustedBuyAmount), buyTokenDecimals)} ${args.buyToken}`);
+  console.log(`    Potential surplus: ${formatBalance(BigInt(quoteBuyAmount) - BigInt(adjustedBuyAmount), buyTokenDecimals)} ${args.buyToken}`);
   console.log(`    Valid until: ${validTo}`);
   console.log('');
 
@@ -364,7 +377,7 @@ async function main() {
     buyToken: buyTokenAddress,
     receiver: traderAddress,
     sellAmount: quoteSellAmount,
-    buyAmount: quoteBuyAmount,
+    buyAmount: adjustedBuyAmount, // Use adjusted amount to create surplus
     validTo: validTo,
     appData: appDataHash,
     feeAmount: '0', // Fee must be zero - fee is now included in sell amount

@@ -1,0 +1,37 @@
+app-data-fetching-enabled = true
+orderbook-url = "http://orderbook"
+tx-gas-limit = "45000000"
+
+[[solver]]
+name = "baseline" # Arbitrary name given to this solver, must be unique
+endpoint = "http://baseline"
+absolute-slippage = "40000000000000000" # Denominated in wei, optional
+relative-slippage = "0.1" # Percentage in the [0, 1] range
+# Anvil account #0 private key (from test mnemonic)
+account = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+
+[submission]
+gas-price-cap = "1000000000000"
+
+[[submission.mempool]]
+mempool = "public"
+
+[contracts]
+gp-v2-settlement = "0x73fce72b0d67ca1b22b81f07440c71a018aaa0f1"
+weth = "0x2affea51aaf12ef2df1253d5f4f1137488f266df"
+balances = "0xc0aaa2bafd66721e583c7b41002d0771aa95f6bf"  # GPv2TradeSimulator
+signatures = "0x74b0d030c84a587ded98abec87bbbbb4d0790037"
+
+[liquidity]
+base-tokens = [
+    "0x2affea51aaf12ef2df1253d5f4f1137488f266df", # WETH
+    "0x40ad751bdc22ebdfdd41afa3ced2260e12485de9", # DAI
+    "0xa40d523b294f92b09d066e6679fda4ddf79ba26c", # USDC
+    "0x4142ef2d123cd994f4bca7b06bcae6c441e764f2", # USDT
+    "0xc242f5cb5fb5c43143f97c8da44ce2f067adb4b7", # GNO
+]
+
+[[liquidity.uniswap-v2]]
+router = "0x205200ad9c2f01fee2f8f5a0ca3ea24395530bbb"
+pool-code = "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f" # Uniswap V2 init code hash
+missing-pool-cache-time = "1h"

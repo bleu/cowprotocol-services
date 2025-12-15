@@ -4,27 +4,7 @@ pragma solidity ^0.8.26;
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 import {DeploymentUtils} from "./Utils.sol";
-
-// We'll use interfaces since Uniswap V2 uses Solidity 0.5.16
-interface IUniswapV2Factory {
-    function createPair(address tokenA, address tokenB) external returns (address pair);
-    function getPair(address tokenA, address tokenB) external view returns (address pair);
-}
-
-interface IUniswapV2Router02 {
-    function factory() external pure returns (address);
-    function WETH() external pure returns (address);
-    function addLiquidity(
-        address tokenA,
-        address tokenB,
-        uint amountADesired,
-        uint amountBDesired,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountA, uint amountB, uint liquidity);
-}
+import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 
 /// @title DeployUniswapV2
 /// @notice Deploy Uniswap V2 Factory, Router, and create token pairs using CREATE2

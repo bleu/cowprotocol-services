@@ -10,13 +10,13 @@ This service provides a lightweight mock of the Coingecko API, specifically the 
 
 The following tokens are supported (configured in `src/tokens.config.ts`):
 
-| Symbol | Address | Price (ETH) |
-|--------|---------|-------------|
-| WETH | `0xb3af08c783c4d9c380893257980b5e26657f2317` | 1.0 |
-| DAI | `0xb12812c0cad46d18b669b31059d485fe90b1a839` | 0.0004 |
-| USDC | `0xb04afbcd351a0a7e4ff658b3772ee5f3f5b6e4ae` | 0.0004 |
-| USDT | `0x171a30524fd943df1a12cbb9da291bf4e34ac84b` | 0.0004 |
-| GNO | `0x51a53858a4a8b81814da35c4604eb9003d56a895` | 0.05 |
+| Symbol | Address            | Price (ETH) |
+| ------ | ------------------ | ----------- |
+| WETH   | `0x${WethAddress}` | 1.0         |
+| DAI    | `0x${DaiAddress}`  | 0.0004      |
+| USDC   | `0x${UsdcAddress}` | 0.0004      |
+| USDT   | `0x${UsdtAddress}` | 0.0004      |
+| GNO    | `0x${GnoAddress}`  | 0.05        |
 
 ## API Endpoints
 
@@ -27,16 +27,19 @@ GET /api/v3/simple/token_price/ethereum?contract_addresses=<addresses>&vs_curren
 ```
 
 **Query Parameters:**
+
 - `contract_addresses`: Comma-separated list of token contract addresses
 - `vs_currencies`: Currency denomination (only `eth` is supported)
 - `precision`: Precision level (e.g., `full`)
 
 **Example Request:**
+
 ```bash
 curl "http://localhost:3000/api/v3/simple/token_price/ethereum?contract_addresses=0xb3af08c783c4d9c380893257980b5e26657f2317,0xb12812c0cad46d18b669b31059d485fe90b1a839&vs_currencies=eth&precision=full"
 ```
 
 **Example Response:**
+
 ```json
 {
   "0xb3af08c783c4d9c380893257980b5e26657f2317": {

@@ -3,26 +3,9 @@ pragma solidity ^0.8.26;
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
-
-interface IERC20 {
-    function transfer(address to, uint256 amount) external returns (bool);
-    function balanceOf(address account) external view returns (uint256);
-}
-
-interface IUniswapV2Pair {
-    function mint(address to) external returns (uint liquidity);
-    function token0() external view returns (address);
-    function token1() external view returns (address);
-    function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
-}
-
-interface IUniswapV2Factory {
-    function getPair(address tokenA, address tokenB) external view returns (address pair);
-}
-
-interface IWETH {
-    function deposit() external payable;
-}
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
+import {IUniswapV2Pair} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 /// @title AddLiquidityDirect
 /// @notice Add initial liquidity to Uniswap V2 pairs using direct transfer + mint
@@ -80,22 +63,22 @@ contract AddLiquidityDirect is Script {
         // WETH = $2000, USDC = $1, DAI = $1, USDT = $1, GNO = $100
 
         console.log("Adding liquidity to WETH pairs...");
-        addLiquidityToPair(factory, weth, usdc, 10 ether, 20_000 * 1e6, deployer);
-        addLiquidityToPair(factory, weth, dai, 10 ether, 20_000 * 1e18, deployer);
-        addLiquidityToPair(factory, weth, usdt, 10 ether, 20_000 * 1e6, deployer);
-        addLiquidityToPair(factory, weth, gno, 10 ether, 200 * 1e18, deployer);
+        addLiquidityToPair(factory, weth, usdc, 100 ether, 200_000 * 1e6, deployer);
+        addLiquidityToPair(factory, weth, dai, 100 ether, 200_000 * 1e18, deployer);
+        addLiquidityToPair(factory, weth, usdt, 100 ether, 200_000 * 1e6, deployer);
+        addLiquidityToPair(factory, weth, gno, 100 ether, 2_000 * 1e18, deployer);
 
         console.log("Adding liquidity to USDC pairs...");
-        addLiquidityToPair(factory, usdc, dai, 10_000 * 1e6, 10_000 * 1e18, deployer);
-        addLiquidityToPair(factory, usdc, usdt, 10_000 * 1e6, 10_000 * 1e6, deployer);
-        addLiquidityToPair(factory, usdc, gno, 10_000 * 1e6, 100 * 1e18, deployer);
+        addLiquidityToPair(factory, usdc, dai, 100_000 * 1e6, 100_000 * 1e18, deployer);
+        addLiquidityToPair(factory, usdc, usdt, 100_000 * 1e6, 100_000 * 1e6, deployer);
+        addLiquidityToPair(factory, usdc, gno, 100_000 * 1e6, 1_000 * 1e18, deployer);
 
         console.log("Adding liquidity to DAI pairs...");
-        addLiquidityToPair(factory, dai, usdt, 10_000 * 1e18, 10_000 * 1e6, deployer);
-        addLiquidityToPair(factory, dai, gno, 10_000 * 1e18, 100 * 1e18, deployer);
+        addLiquidityToPair(factory, dai, usdt, 100_000 * 1e18, 100_000 * 1e6, deployer);
+        addLiquidityToPair(factory, dai, gno, 100_000 * 1e18, 1_000 * 1e18, deployer);
 
         console.log("Adding liquidity to USDT-GNO pair...");
-        addLiquidityToPair(factory, usdt, gno, 10_000 * 1e6, 100 * 1e18, deployer);
+        addLiquidityToPair(factory, usdt, gno, 100_000 * 1e6, 1_000 * 1e18, deployer);
 
         vm.stopBroadcast();
 
