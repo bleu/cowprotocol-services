@@ -15,15 +15,13 @@ impl Contracts {
         Self {
             weth: eth::WethAddress(
                 WETH9::deployment_address(&chain.id())
-                    .unwrap_or_else(|| {
-                        // For local development chains (Hardhat/Anvil), use the standard deployment
-                        // address from the test deployment at 0x5FbDB2315678afecb367f032d93F642f64180aa3
-                        if chain.id() == 31337 {
-                            "0x5FbDB2315678afecb367f032d93F642f64180aa3".parse().unwrap()
-                        } else {
-                            panic!("there should be a contract address for all supported chains")
-                        }
+                    .or_else(|| {
+                        std::env::var("WETH_ADDRESS")
+                            .or_else(|_| std::env::var("NATIVE_TOKEN_ADDRESS"))
+                            .ok()
+                            .and_then(|addr| addr.parse().ok())
                     })
+                    .expect("no WETH address for chain - set WETH_ADDRESS or NATIVE_TOKEN_ADDRESS environment variable")
                     .into_legacy(),
             ),
         }

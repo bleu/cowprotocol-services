@@ -13,61 +13,57 @@ export interface TokenConfig {
 }
 
 // Load token addresses from environment variables
-const WETH_ADDRESS = (process.env.WETH_ADDRESS || '').toLowerCase();
-const DAI_ADDRESS = (process.env.DAI_ADDRESS || '').toLowerCase();
-const USDC_ADDRESS = (process.env.USDC_ADDRESS || '').toLowerCase();
-const USDT_ADDRESS = (process.env.USDT_ADDRESS || '').toLowerCase();
-const GNO_ADDRESS = (process.env.GNO_ADDRESS || '').toLowerCase();
+const WETH_ADDRESS = (process.env.WETH_ADDRESS || "").toLowerCase();
+const DAI_ADDRESS = (process.env.DAI_ADDRESS || "").toLowerCase();
+const USDC_ADDRESS = (process.env.USDC_ADDRESS || "").toLowerCase();
+const USDT_ADDRESS = (process.env.USDT_ADDRESS || "").toLowerCase();
+const GNO_ADDRESS = (process.env.GNO_ADDRESS || "").toLowerCase();
 
 // Build token config dynamically from environment variables
 function buildTokenConfig(): Record<string, TokenConfig> {
-  const tokens: Record<string, TokenConfig> = {};
-
-  if (WETH_ADDRESS) {
-    tokens[WETH_ADDRESS] = {
+  if (
+    !WETH_ADDRESS ||
+    !DAI_ADDRESS ||
+    !USDC_ADDRESS ||
+    !USDT_ADDRESS ||
+    !GNO_ADDRESS
+  ) {
+    throw new Error(
+      "One or more token addresses are not set in environment variables."
+    );
+  }
+  const tokens: Record<string, TokenConfig> = {
+    [WETH_ADDRESS]: {
       address: WETH_ADDRESS,
-      symbol: 'WETH',
-      name: 'Wrapped Ether',
+      symbol: "WETH",
+      name: "Wrapped Ether",
       decimals: 18,
-    };
-  }
-
-  if (DAI_ADDRESS) {
-    tokens[DAI_ADDRESS] = {
+    },
+    [DAI_ADDRESS]: {
       address: DAI_ADDRESS,
-      symbol: 'DAI',
-      name: 'Dai Stablecoin',
+      symbol: "DAI",
+      name: "Dai Stablecoin",
       decimals: 18,
-    };
-  }
-
-  if (USDC_ADDRESS) {
-    tokens[USDC_ADDRESS] = {
+    },
+    [USDC_ADDRESS]: {
       address: USDC_ADDRESS,
-      symbol: 'USDC',
-      name: 'USD Coin',
+      symbol: "USDC",
+      name: "USD Coin",
       decimals: 6,
-    };
-  }
-
-  if (USDT_ADDRESS) {
-    tokens[USDT_ADDRESS] = {
+    },
+    [USDT_ADDRESS]: {
       address: USDT_ADDRESS,
-      symbol: 'USDT',
-      name: 'Tether USD',
+      symbol: "USDT",
+      name: "Tether USD",
       decimals: 6,
-    };
-  }
-
-  if (GNO_ADDRESS) {
-    tokens[GNO_ADDRESS] = {
+    },
+    [GNO_ADDRESS]: {
       address: GNO_ADDRESS,
-      symbol: 'GNO',
-      name: 'Gnosis Token',
+      symbol: "GNO",
+      name: "Gnosis Token",
       decimals: 18,
-    };
-  }
-
+    },
+  };
   return tokens;
 }
 

@@ -20,19 +20,24 @@ All services work out-of-the-box with proper configuration pointing to the local
 ### Prerequisites
 
 - Docker and Docker Compose
-- Foundry (forge, cast, anvil)
-- jq (for JSON parsing)
-- Python 3 (for order signing)
 
 ### Initialize the Environment
 
-1. **Start all services** (this will automatically load the existing blockchain state):
+1. **Start all services**:
    ```bash
    cd /path/to/playground
    docker-compose -f docker-compose.offline.yml up -d
    ```
 
-   The Anvil node will automatically load the pre-deployed state from `poc-offline-mode/state/poc-state.json`.
+   On first run, the `chain-deployer` service will automatically:
+   - Start a temporary Anvil instance
+   - Deploy all contracts (tokens, Uniswap V2, CoW Protocol, etc.)
+   - Add liquidity to Uniswap pairs
+   - Generate configuration files (`.env.offline`, `driver.toml`, `baseline.toml`)
+   - Save the blockchain state to `offline-mode/state/anvil-state.json`
+   - Start the Anvil node with the deployed state
+
+   On subsequent runs, the chain-deployer will detect the existing state and skip deployment, immediately starting the Anvil node with the saved state.
 
 2. **Wait for services to be ready**:
    ```bash
@@ -40,14 +45,19 @@ All services work out-of-the-box with proper configuration pointing to the local
    curl --retry 24 --retry-delay 5 --retry-all-errors http://localhost:8080/api/v1/version
    ```
 
-3. **Run the end-to-end test**:
+3. **Run the TypeScript integration tests**:
    ```bash
-   ./test_playground_offline_cow.sh
+   cd offline-mode
+   npm run test:order
+   # or
+   npm run test:cowshed
    ```
 
-   This script will:
-   - Create two orders (peer-to-peer matching)
-   - Wait for autopilot to match and settle them
+   These tests will:
+   - Fund traders with tokens
+   - Create and sign orders
+   - Submit orders to the orderbook
+   - Monitor settlement status
    - Verify balances changed correctly
 
 ### Access Points
@@ -150,56 +160,12 @@ Both tests should complete in **15-30 seconds** when the system is healthy. If o
 
 ### Contract Addresses
 
-All deployed contract addresses are stored in:
+All deployed contract addresses are automatically stored in:
 ```
-poc-offline-mode/config/addresses.json
+playground/.env.offline
 ```
 
-Example:
-```json
-{
-  "chainId": 31337,
-  "tokens": {
-    "WETH": "0x923F26D85D25C0AbB51d643F105DcA62b13374C2",
-    "USDC": "0x78e24297cb4911956A3017dBa2d82463c9c01555",
-    "DAI": "0xA3B4bb9A29a954C5236080C331E32fB4434e4229",
-    "USDT": "0x52eEA99F47938350E5BaFEd3bEdcF886d116b061",
-    "GNO": "0x869b46ffAAE323ff22d4a5A92e14141542693EbE"
-  },
-  "uniswap": {
-    "factory": "0x75BB62D11fC5aA893827203D977e0931D269580D",
-    "router": "0x2A444154BC6a6228FcA4225C939f650886655fED",
-    "pairs": {
-      "WETH_USDC": "0x95BB40fA565c47086A879738320f70b5536801bA",
-      "WETH_DAI": "0xDF07533453d6e041B756001DfB5986E149D46E6c",
-      "WETH_USDT": "0x06f0349F3684086715Fa21395795275383E29f89",
-      "WETH_GNO": "0xb898217aB617B331BC584521131911A8ca7b24de",
-      "USDC_DAI": "0x23946DA7ED86d371d3606409350a59b0874d640A",
-      "USDC_USDT": "0x048683Aa87c603Ff55514BC5BA08f9D0Aaa1B6d5",
-      "USDC_GNO": "0xE59c5a96C44355E3d075F89B414679Fac91B2efF",
-      "DAI_USDT": "0x54185ff1C4442FcA50456bc4bd18A0e9A3669698",
-      "DAI_GNO": "0x27746D7E586f0343ec8E428612F4470249EcFf8c",
-      "USDT_GNO": "0x6389094E07770816FB940a68D86C93808Ce30D55"
-    }
-  },
-  "cowProtocol": {
-    "authenticator": "0xEe308BBdaafBd435312741ABed5883278Aa6a783",
-    "settlement": "0x8c0332128D2B6a19e687Aa16DB9C779106028F6f",
-    "vaultRelayer": "0x29b90c7D3fb8725061F089c7cAA1143783b55980",
-    "balancerVault": "0xC06FA9877b907F58677EF3246D21760411FCFcFa",
-    "hooksTrampoline": "0x20DDAbae0B223E0e9d6287c719Fc472E76d18eA5"
-  },
-  "auxiliary": {
-    "tradeSimulator": "0xe5e977b8f1699433f05e8E18a20806Bce2a0Fcc0",
-    "signatures": "0xA6BB44Ec3C9D05aeDC4c534B63bC7811D4B94eeC"
-  },
-  "cowShed": {
-    "factory": "0xDb086A44b9db2650e9e3c1F21Fc7ba6B7d4B6681",
-    "implementation": "0xCeEEA420F4DaE4E0405F0E218B8da6114D01ddE3"
-  }
-}
-
-```
+This file is auto-generated during deployment and contains all token addresses, DEX contracts, and CoW Protocol contracts. The test scripts automatically load addresses from this file using the `loadAddresses()` utility function.
 
 ## Building Contracts from Source
 
@@ -247,36 +213,25 @@ forge build --profile cow-protocol
 
 ## Deploying from Scratch
 
-If you want to deploy everything from scratch (instead of loading the existing state):
+If you want to redeploy everything from scratch:
 
 1. **Delete the existing state**:
    ```bash
-   rm poc-offline-mode/state/poc-state.json
+   rm offline-mode/state/anvil-state.json
    ```
 
-2. **Start Anvil and services**:
-   ```bash
-   docker-compose -f docker-compose.offline.yml up -d chain
-   ```
-
-3. **Run the deployment script**:
-   ```bash
-   cd poc-offline-mode
-   ./scripts/deploy-all.sh
-   ```
-
-   This will deploy:
-   - Step 1: Tokens (WETH, USDC, DAI)
-   - Step 2: Uniswap V2 (Factory, Router)
-   - Step 3: Mock Balancer Vault
-   - Step 4: CoW Protocol (Settlement, VaultRelayer, Authenticator)
-   - Step 5: Uniswap V2 Pairs with liquidity
-   - Step 6: Save addresses to `config/addresses.json`
-
-4. **Start the remaining services**:
+2. **Start all services**:
    ```bash
    docker-compose -f docker-compose.offline.yml up -d
    ```
+
+   The `chain-deployer` service will automatically:
+   - Deploy all contracts from scratch
+   - Add liquidity to Uniswap pairs
+   - Generate configuration files in `playground/.env.offline`
+   - Save the new blockchain state
+
+   No manual deployment scripts are needed - everything is handled automatically by Docker!
 
 ## Configuration Files
 
@@ -294,10 +249,10 @@ If you want to deploy everything from scratch (instead of loading the existing s
 
 ### Blockchain State
 
-- **`state/poc-state.json`**: Persistent Anvil blockchain state
-  - Contains all deployed contracts
-  - Pre-seeded liquidity pools
-  - Can be loaded/dumped by Anvil
+- **`state/anvil-state.json`**: Persistent Anvil blockchain state
+  - Automatically generated on first run by the chain-deployer service
+  - Contains all deployed contracts and pre-seeded liquidity pools
+  - Can be deleted to trigger a fresh deployment
 
 ## Architecture
 
@@ -361,20 +316,20 @@ Services: `chain`, `orderbook`, `autopilot`, `driver`, `baseline`
 # Stop all services
 docker-compose -f docker-compose.offline.yml down -v
 
-# Remove state (optional - will require redeployment)
-rm poc-offline-mode/state/poc-state.json
+# Remove state to trigger fresh deployment
+rm offline-mode/state/anvil-state.json
 
-# Start fresh
+# Start fresh (chain-deployer will automatically redeploy everything)
 docker-compose -f docker-compose.offline.yml up -d
 ```
 
 ## Development Workflow
 
 1. **Make code changes** to contracts or services
-2. **Rebuild contracts** using appropriate Foundry profile
-3. **Redeploy** using `scripts/deploy-all.sh` (or keep existing state)
-4. **Restart services**: `docker-compose -f docker-compose.offline.yml restart`
-5. **Test changes** using `test_playground_offline_cow.sh`
+2. **Rebuild contracts** using appropriate Foundry profile (if contract changes were made)
+3. **Redeploy** by deleting the state file: `rm offline-mode/state/anvil-state.json`
+4. **Restart services**: `docker-compose -f docker-compose.offline.yml up -d`
+5. **Test changes** using the TypeScript integration tests: `npm run test:order` or `npm run test:cowshed`
 
 ## Learn More
 

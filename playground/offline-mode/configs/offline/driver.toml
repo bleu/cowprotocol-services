@@ -17,21 +17,21 @@ gas-price-cap = "1000000000000"
 mempool = "public"
 
 [contracts]
-gp-v2-settlement = "0x8c0332128d2b6a19e687aa16db9c779106028f6f"
-weth = "0x923f26d85d25c0abb51d643f105dca62b13374c2"
-balances = "0xe5e977b8f1699433f05e8e18a20806bce2a0fcc0"  # GPv2TradeSimulator
-signatures = "0xa6bb44ec3c9d05aedc4c534b63bc7811d4b94eec"
+gp-v2-settlement = "0x73fce72b0d67ca1b22b81f07440c71a018aaa0f1"
+weth = "0x2affea51aaf12ef2df1253d5f4f1137488f266df"
+balances = "0xc0aaa2bafd66721e583c7b41002d0771aa95f6bf"  # GPv2TradeSimulator
+signatures = "0x74b0d030c84a587ded98abec87bbbbb4d0790037"
 
 [liquidity]
 base-tokens = [
-    "0x923f26d85d25c0abb51d643f105dca62b13374c2", # WETH
-    "0xa3b4bb9a29a954c5236080c331e32fb4434e4229", # DAI
-    "0x78e24297cb4911956a3017dba2d82463c9c01555", # USDC
-    "0x52eea99f47938350e5bafed3bedcf886d116b061", # USDT
-    "0x869b46ffaae323ff22d4a5a92e14141542693ebe", # GNO
+    "0x2affea51aaf12ef2df1253d5f4f1137488f266df", # WETH
+    "0x40ad751bdc22ebdfdd41afa3ced2260e12485de9", # DAI
+    "0xa40d523b294f92b09d066e6679fda4ddf79ba26c", # USDC
+    "0x4142ef2d123cd994f4bca7b06bcae6c441e764f2", # USDT
+    "0xc242f5cb5fb5c43143f97c8da44ce2f067adb4b7", # GNO
 ]
 
 [[liquidity.uniswap-v2]]
-router = "0x2a444154bc6a6228fca4225c939f650886655fed"
+router = "0x205200ad9c2f01fee2f8f5a0ca3ea24395530bbb"
 pool-code = "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f" # Uniswap V2 init code hash
 missing-pool-cache-time = "1h"

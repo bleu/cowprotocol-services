@@ -10,13 +10,13 @@ This service provides a lightweight mock of the Coingecko API, specifically the 
 
 The following tokens are supported (configured in `src/tokens.config.ts`):
 
-| Symbol | Address                                      | Price (ETH) |
-| ------ | -------------------------------------------- | ----------- |
-| WETH   | `0x923F26D85D25C0AbB51d643F105DcA62b13374C2` | 1.0         |
-| DAI    | `0xA3B4bb9A29a954C5236080C331E32fB4434e4229` | 0.0004      |
-| USDC   | `0x78e24297cb4911956A3017dBa2d82463c9c01555` | 0.0004      |
-| USDT   | `0x52eEA99F47938350E5BaFEd3bEdcF886d116b061` | 0.0004      |
-| GNO    | `0x869b46ffAAE323ff22d4a5A92e14141542693EbE` | 0.05        |
+| Symbol | Address            | Price (ETH) |
+| ------ | ------------------ | ----------- |
+| WETH   | `0x${WethAddress}` | 1.0         |
+| DAI    | `0x${DaiAddress}`  | 0.0004      |
+| USDC   | `0x${UsdcAddress}` | 0.0004      |
+| USDT   | `0x${UsdtAddress}` | 0.0004      |
+| GNO    | `0x${GnoAddress}`  | 0.05        |
 
 ## API Endpoints
 
