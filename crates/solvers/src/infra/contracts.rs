@@ -15,7 +15,13 @@ impl Contracts {
         Self {
             weth: eth::WethAddress(
                 WETH9::deployment_address(&chain.id())
-                    .expect("there should be a contract address for all supported chains")
+                    .or_else(|| {
+                        std::env::var("WETH_ADDRESS")
+                            .or_else(|_| std::env::var("NATIVE_TOKEN_ADDRESS"))
+                            .ok()
+                            .and_then(|addr| addr.parse().ok())
+                    })
+                    .expect("no WETH address for chain - set WETH_ADDRESS or NATIVE_TOKEN_ADDRESS environment variable")
                     .into_legacy(),
             ),
         }
