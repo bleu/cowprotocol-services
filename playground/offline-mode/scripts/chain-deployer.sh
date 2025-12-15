@@ -67,7 +67,8 @@ anvil \
     --gas-limit 30000000 \
     --code-size-limit 50000 \
     --accounts 10 \
-    --dump-state "$STATE_FILE" &
+    --balance 1000000 \
+    --mnemonic "test test test test test test test test test test test junk"
 
 ANVIL_PID=$!
 echo "📝 Anvil PID: $ANVIL_PID"

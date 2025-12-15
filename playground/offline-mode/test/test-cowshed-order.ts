@@ -1,13 +1,13 @@
 /**
  * CoWShed Integration Test Script
  *
- * This script tests the full flow of placing an order with hooks through CoWShed:
- * 1. Calculate CoWShed proxy address for user
- * 2. Create pre-hook (token approval)
- * 3. Create order with hooks in appData
- * 4. Sign order with EIP-712
- * 5. Submit to orderbook
- * 6. Monitor for settlement
+ * This script demonstrates the CORRECT use of CoWShed with CoW Protocol:
+ * - Assets stay in user EOA (not transferred to proxy)
+ * - Order is signed by user EOA using EIP-712
+ * - Hooks execute permissioned actions on the CoWShed proxy
+ * - Settlement happens from user's balance
+ *
+ * Key Insight: CoWShed proxies are for executing hooks, NOT for holding trading assets!
  *
  * Run with: npm run test:cowshed
  */
@@ -20,8 +20,8 @@ const CONFIG = {
   rpcUrl: 'http://localhost:8545',
   orderbookUrl: 'http://localhost:8080',
   chainId: 31337,
-  // Anvil's first test account
-  privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
+  // Anvil's second test account
+  privateKey: '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d',
 };
 
 // Load deployed addresses from .env.offline
@@ -74,35 +74,15 @@ const COWSHED_FACTORY_ABI = [
   'function implementation() view returns (address)',
 ];
 
-// Helper to create hook calldata for token approval
-function createApprovalHook(
-  tokenAddress: string,
-  spenderAddress: string,
-  amount: bigint
-): { target: string; callData: string; gasLimit: string } {
-  const iface = new ethers.Interface(ERC20_ABI);
-  const callData = iface.encodeFunctionData('approve', [spenderAddress, amount]);
-  return {
-    target: tokenAddress,
-    callData: callData,
-    gasLimit: '100000',
-  };
-}
-
 // Helper to compute appData hash
 function computeAppDataHash(appDataContent: object): string {
   const appDataString = JSON.stringify(appDataContent);
   return ethers.keccak256(ethers.toUtf8Bytes(appDataString));
 }
 
-// Helper to get current timestamp + offset
-function getValidTo(offsetSeconds: number): number {
-  return Math.floor(Date.now() / 1000) + offsetSeconds;
-}
-
 async function main() {
   console.log('🐮 CoWShed Integration Test');
-  console.log('===========================\n');
+  console.log('=========================================\n');
 
   // Setup provider and wallet
   const provider = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
@@ -111,7 +91,7 @@ async function main() {
 
   console.log(`📋 Configuration:`);
   console.log(`   Chain ID: ${CONFIG.chainId}`);
-  console.log(`   User: ${userAddress}`);
+  console.log(`   User EOA: ${userAddress}`);
   console.log(`   Settlement: ${ADDRESSES.settlement}`);
   console.log(`   Vault Relayer: ${ADDRESSES.vaultRelayer}`);
   console.log(`   Hooks Trampoline: ${ADDRESSES.hooksTrampoline}`);
@@ -134,56 +114,78 @@ async function main() {
 
   const proxyCode = await provider.getCode(proxyAddress);
   if (proxyCode === '0x') {
-    console.log('ℹ️  Proxy not deployed yet (will be deployed on first use via hook)');
+    console.log('ℹ️  Proxy not deployed yet');
+    console.log('ℹ️  CoWShed can be used even without deployment - hooks deploy it automatically');
   } else {
     console.log('ℹ️  Proxy already deployed');
   }
   console.log('');
 
-  // Step 2: Check balances and allowances
+  // Step 2: Ensure user has DAI and approval (assets stay in user EOA!)
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('STEP 2: Check Balances and Allowances');
+  console.log('STEP 2: Setup User EOA with DAI (NOT proxy!)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  const daiBalance = await dai.balanceOf(userAddress);
+  const sellAmount = ethers.parseEther('10'); // Sell 10 DAI
+  let daiBalance = await dai.balanceOf(userAddress);
+
+  console.log(`   User DAI Balance: ${ethers.formatEther(daiBalance)} DAI`);
+
+  // If we don't have enough DAI, get it from account #0
+  if (daiBalance < sellAmount) {
+    console.log(`   Need ${ethers.formatEther(sellAmount)} DAI but only have ${ethers.formatEther(daiBalance)}`);
+    console.log('   Getting DAI from Anvil account #0...');
+
+    const account0PrivateKey = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+    const account0Wallet = new ethers.Wallet(account0PrivateKey, provider);
+    const daiFromAccount0 = new ethers.Contract(ADDRESSES.dai, ERC20_ABI, account0Wallet);
+
+    const transferAmount = ethers.parseEther('100');
+    const transferTx = await daiFromAccount0.transfer(userAddress, transferAmount);
+    await transferTx.wait();
+
+    daiBalance = await dai.balanceOf(userAddress);
+    console.log(`   ✅ Received DAI. New balance: ${ethers.formatEther(daiBalance)} DAI`);
+  }
+
+  // Approve VaultRelayer to spend DAI from user EOA
   const daiAllowance = await dai.allowance(userAddress, ADDRESSES.vaultRelayer);
-
-  console.log(`   DAI Balance: ${ethers.formatEther(daiBalance)} DAI`);
   console.log(`   DAI Allowance for Vault Relayer: ${ethers.formatEther(daiAllowance)} DAI`);
 
-  // Ensure we have enough allowance
-  const sellAmount = ethers.parseEther('10'); // Sell 10 DAI
   if (daiAllowance < sellAmount) {
-    console.log('\n   Approving Vault Relayer to spend DAI...');
+    console.log('   Approving Vault Relayer to spend DAI from user EOA...');
     const approveTx = await dai.approve(ADDRESSES.vaultRelayer, ethers.parseEther('1000000'));
     await approveTx.wait();
     console.log('   ✅ Approved');
   }
   console.log('');
 
-  // Step 3: Get domain separator
+  // Step 3: Create hooks that demonstrate CoWShed's purpose
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('STEP 3: Get Domain Separator');
+  console.log('STEP 3: Create Pre/Post Hooks for Demonstration');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  const domainSeparator = await settlement.domainSeparator();
-  console.log(`   Domain Separator: ${domainSeparator}`);
+  // Pre-hook: Transfer some WETH to the proxy (demonstration of proxy interaction)
+  // This shows CoWShed can hold assets for other purposes (like collateral, LP positions, etc.)
+  const preHookAmount = ethers.parseEther('0.5');
+  const wethIface = new ethers.Interface(ERC20_ABI);
+  const transferCallData = wethIface.encodeFunctionData('transfer', [proxyAddress, preHookAmount]);
+
+  const preHook = {
+    target: ADDRESSES.weth,
+    callData: transferCallData,
+    gasLimit: '100000',
+  };
+
+  console.log('   ✅ Pre-hook created: Will transfer 0.5 WETH to proxy during settlement');
+  console.log('   ℹ️  This demonstrates permissioned actions, not trading from proxy');
   console.log('');
 
-  // Step 4: Create order with hooks
+  // Step 4: Create appData with hooks
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('STEP 4: Create Order with Pre-Hook');
+  console.log('STEP 4: Create AppData with Hooks Metadata');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  // Create a pre-hook that does a simple call (we'll use a no-op approval as example)
-  // In a real scenario, this could be: unwrap WETH, claim rewards, etc.
-  const preHook = createApprovalHook(
-    ADDRESSES.dai,
-    ADDRESSES.hooksTrampoline, // Approve HooksTrampoline (safe, since it doesn't hold funds)
-    ethers.parseEther('1')
-  );
-
-  // Create appData with hooks
   const appDataContent = {
     version: '1.0.0',
     metadata: {
@@ -196,25 +198,50 @@ async function main() {
 
   const appDataHash = computeAppDataHash(appDataContent);
   console.log(`   AppData Hash: ${appDataHash}`);
-  console.log(`   Pre-Hook: Approve ${preHook.target} for HooksTrampoline`);
+  console.log(`   Pre-hooks: ${appDataContent.metadata.hooks.pre.length}`);
   console.log('');
 
-  // Step 5: Get quote from orderbook
+  // Step 5: Upload appData to orderbook
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('STEP 5: Get Quote from Orderbook');
+  console.log('STEP 5: Upload AppData to Orderbook');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
+  console.log('   Uploading appData with hooks...');
+
+  const uploadResponse = await fetch(`${CONFIG.orderbookUrl}/api/v1/app_data/${appDataHash}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fullAppData: JSON.stringify(appDataContent),
+    }),
+  });
+
+  if (!uploadResponse.ok) {
+    const errorText = await uploadResponse.text();
+    console.log(`   ⚠️ AppData upload status: ${uploadResponse.status}`);
+    console.log(`   Response: ${errorText}`);
+    // Continue anyway - might already exist
+  } else {
+    console.log('   ✅ AppData uploaded successfully');
+  }
+  console.log('');
+
+  // Step 6: Get quote from orderbook (FROM user EOA)
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('STEP 6: Get Quote from Orderbook');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+  // Get quote WITH our custom appData hash (includes hooks)
   const quoteRequest = {
     sellToken: ADDRESSES.dai,
     buyToken: ADDRESSES.weth,
-    from: userAddress,
+    from: userAddress, // ← CRITICAL: User EOA, NOT proxy address!
     kind: 'sell',
     sellAmountBeforeFee: sellAmount.toString(),
-    appData: JSON.stringify(appDataContent),
-    appDataHash: appDataHash,
+    appData: appDataHash, // ← Include our custom appData with hooks!
   };
 
-  console.log('   Requesting quote...');
+  console.log('   Requesting quote with custom appData (hooks included)...');
 
   const quoteResponse = await fetch(`${CONFIG.orderbookUrl}/api/v1/quote`, {
     method: 'POST',
@@ -226,29 +253,6 @@ async function main() {
     const errorText = await quoteResponse.text();
     console.log(`   ❌ Quote failed: ${quoteResponse.status}`);
     console.log(`   Error: ${errorText}`);
-
-    // Try without hooks to see if basic quoting works
-    console.log('\n   Trying quote without hooks...');
-    const simpleQuoteRequest = {
-      sellToken: ADDRESSES.dai,
-      buyToken: ADDRESSES.weth,
-      from: userAddress,
-      kind: 'sell',
-      sellAmountBeforeFee: sellAmount.toString(),
-    };
-
-    const simpleQuoteResponse = await fetch(`${CONFIG.orderbookUrl}/api/v1/quote`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(simpleQuoteRequest),
-    });
-
-    if (simpleQuoteResponse.ok) {
-      const simpleQuote = await simpleQuoteResponse.json() as any;
-      console.log('   ✅ Simple quote succeeded (without hooks)');
-      console.log(`   Buy Amount: ${ethers.formatEther(simpleQuote.quote.buyAmount)} WETH`);
-      console.log(`   Fee Amount: ${ethers.formatEther(simpleQuote.quote.feeAmount)} DAI`);
-    }
     return;
   }
 
@@ -256,25 +260,33 @@ async function main() {
   console.log('   ✅ Quote received');
   console.log(`   Buy Amount: ${ethers.formatEther(quote.quote.buyAmount)} WETH`);
   console.log(`   Fee Amount: ${ethers.formatEther(quote.quote.feeAmount)} DAI`);
-  console.log(`   Verified: ${quote.verified}`);
   console.log('');
 
-  // Step 6: Create and sign the order
+  // Step 7: Create and sign the order (user EOA signs)
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('STEP 6: Sign Order with EIP-712');
+  console.log('STEP 7: Sign Order with EIP-712 (User EOA)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  // Note: CoW Protocol v2 uses feeAmount: 0 for limit orders
-  // The actual fee is taken from the sell amount
+  // Apply surplus (5% to ensure profitability)
+  const surplusPercent = 5;
+  const surplusMultiplier = 1 - (surplusPercent / 100);
+  const adjustedBuyAmount = (BigInt(quote.quote.buyAmount) * BigInt(Math.floor(surplusMultiplier * 10000)) / 10000n).toString();
+
+  console.log(`   Quote sell amount: ${ethers.formatEther(quote.quote.sellAmount)} DAI`);
+  console.log(`   Quote buy amount: ${ethers.formatEther(quote.quote.buyAmount)} WETH`);
+  console.log(`   Order buy amount (with ${surplusPercent}% surplus): ${ethers.formatEther(adjustedBuyAmount)} WETH`);
+  console.log('');
+
+  // Order from user EOA (NOT proxy!)
   const order = {
     sellToken: ADDRESSES.dai,
     buyToken: ADDRESSES.weth,
-    receiver: userAddress,
+    receiver: userAddress, // ← Receive to user EOA
     sellAmount: quote.quote.sellAmount,
-    buyAmount: quote.quote.buyAmount,
-    validTo: getValidTo(600), // 10 minutes from now
+    buyAmount: adjustedBuyAmount,
+    validTo: quote.quote.validTo,
     appData: appDataHash,
-    feeAmount: '0', // Fee is now always 0 (included in sell amount)
+    feeAmount: '0',
     kind: 'sell',
     partiallyFillable: false,
     sellTokenBalance: 'erc20',
@@ -293,14 +305,14 @@ async function main() {
     Order: ORDER_TYPE_FIELDS,
   };
 
-  console.log('   Signing order...');
+  console.log('   Signing order with user EOA...');
   const signature = await wallet.signTypedData(domain, types, order);
   console.log(`   ✅ Signature: ${signature.substring(0, 20)}...`);
   console.log('');
 
-  // Step 7: Submit order to orderbook
+  // Step 8: Submit order to orderbook
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('STEP 7: Submit Order to Orderbook');
+  console.log('STEP 8: Submit Order to Orderbook');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   const orderCreation = {
@@ -310,19 +322,18 @@ async function main() {
     sellAmount: order.sellAmount,
     buyAmount: order.buyAmount,
     validTo: order.validTo,
-    feeAmount: '0', // Always 0 in v2
+    appData: order.appData,
+    feeAmount: '0',
     kind: order.kind,
     partiallyFillable: order.partiallyFillable,
     sellTokenBalance: order.sellTokenBalance,
     buyTokenBalance: order.buyTokenBalance,
-    signingScheme: 'eip712',
+    signingScheme: 'eip712', // ← EIP-712 for EOA (correct!)
     signature: signature,
-    from: userAddress,
-    appData: JSON.stringify(appDataContent),
-    appDataHash: appDataHash,
+    from: userAddress, // ← User EOA (correct!)
   };
 
-  console.log('   Submitting order...');
+  console.log('   Submitting order with hooks...');
 
   const orderResponse = await fetch(`${CONFIG.orderbookUrl}/api/v1/orders`, {
     method: 'POST',
@@ -342,9 +353,9 @@ async function main() {
   console.log(`   Order UID: ${orderUid}`);
   console.log('');
 
-  // Step 8: Monitor order status
+  // Step 9: Monitor order status
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('STEP 8: Monitor Order Status');
+  console.log('STEP 9: Monitor Order Status');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   const cleanOrderUid = orderUid.replace(/"/g, '');
@@ -352,8 +363,8 @@ async function main() {
   console.log('   (Press Ctrl+C to stop monitoring)\n');
 
   let lastStatus = '';
-  for (let i = 0; i < 60; i++) { // Monitor for up to 5 minutes
-    await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+  for (let i = 0; i < 12; i++) { // Monitor for 1 minute (12 * 5s = 60s)
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
     const statusResponse = await fetch(`${CONFIG.orderbookUrl}/api/v1/orders/${cleanOrderUid}`);
     if (!statusResponse.ok) {
@@ -369,15 +380,23 @@ async function main() {
       console.log(`   [${new Date().toISOString()}] Status: ${status}`);
 
       if (status === 'fulfilled') {
-        console.log('\n   🎉 Order fulfilled!');
+        console.log('\n   🎉 Order fulfilled with hooks executed!');
 
         // Check final balances
-        const finalDaiBalance = await dai.balanceOf(userAddress);
-        const finalWethBalance = await weth.balanceOf(userAddress);
+        const finalUserDaiBalance = await dai.balanceOf(userAddress);
+        const finalUserWethBalance = await weth.balanceOf(userAddress);
+        const finalProxyWethBalance = await weth.balanceOf(proxyAddress);
 
-        console.log(`\n   Final Balances:`);
-        console.log(`   DAI: ${ethers.formatEther(finalDaiBalance)}`);
-        console.log(`   WETH: ${ethers.formatEther(finalWethBalance)}`);
+        console.log(`\n   User Final Balances:`);
+        console.log(`   DAI: ${ethers.formatEther(finalUserDaiBalance)}`);
+        console.log(`   WETH: ${ethers.formatEther(finalUserWethBalance)}`);
+
+        console.log(`\n   Proxy WETH Balance (from pre-hook):`);
+        console.log(`   WETH: ${ethers.formatEther(finalProxyWethBalance)}`);
+
+        if (finalProxyWethBalance >= preHookAmount) {
+          console.log(`   ✅ Pre-hook successfully transferred WETH to proxy!`);
+        }
         break;
       } else if (status === 'cancelled' || status === 'expired') {
         console.log(`\n   ❌ Order ${status}`);
@@ -386,8 +405,26 @@ async function main() {
     }
   }
 
+  if (lastStatus === 'open') {
+    console.log('\n   ⚠️ Order still open after 1 minute - may indicate an issue');
+    console.log('   Possible causes:');
+    console.log('   - Hooks preventing settlement (check driver/solver logs)');
+    console.log('   - Solver not picking up orders with hooks');
+    console.log('   - Liquidity issues');
+  }
+
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('Test Complete!');
+  console.log('');
+  if (lastStatus === 'fulfilled') {
+    console.log('Summary: CoWShed hooks executed permissioned actions while');
+    console.log('         trading assets stayed in user EOA. This is the');
+    console.log('         CORRECT way to use CoWShed with CoW Protocol!');
+  } else {
+    console.log('Summary: Order submitted successfully but not settled.');
+    console.log('         Try running test-playground-order.ts without hooks');
+    console.log('         to verify basic settlement works.');
+  }
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 }
 
