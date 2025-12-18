@@ -32,6 +32,13 @@ export async function runForgeScript(
     env = {},
   } = options;
 
+  // Clean up any previous broadcast for this script to avoid resume errors
+  const broadcastDir = path.join(__dirname, '../..', 'broadcast', `${scriptName}.s.sol`);
+  if (fs.existsSync(broadcastDir)) {
+    console.log(`Removing previous broadcast directory: ${broadcastDir}`);
+    fs.rmSync(broadcastDir, { recursive: true, force: true });
+  }
+
   const args = [
     'forge script',
     `${scriptPath}:${scriptName}`,
@@ -76,7 +83,7 @@ export function readBroadcastResult(scriptName: string): ForgeBroadcastResult {
     '../..',
     'broadcast',
     `${scriptName}.s.sol`,
-    '31337',
+    '1',
     'run-latest.json'
   );
 
@@ -174,6 +181,64 @@ export async function castSend(
   if (stdout) {
     console.log(stdout);
   }
+}
+
+/**
+ * Deploy a contract at a specific address by copying bytecode and storage from mainnet
+ * @param contractAddress - The address where to deploy the contract (on local chain)
+ * @param mainnetRpcUrl - The mainnet RPC URL to fetch bytecode/storage from
+ * @param localRpcUrl - The local RPC URL to deploy to
+ * @param storageSlots - Array of storage slot numbers to copy from mainnet (optional)
+ * @param contractName - Name of the contract for logging purposes
+ */
+export async function deployOnAddressWithStorage(
+  contractAddress: string,
+  mainnetRpcUrl: string,
+  localRpcUrl: string,
+  contractName: string,
+  storageSlots: number[] = []
+): Promise<void> {
+  console.log(`Deploying ${contractName} at ${contractAddress}...`);
+
+  // Fetch bytecode from mainnet
+  console.log(`  Fetching ${contractName} bytecode from mainnet...`);
+  const { stdout: bytecode } = await execAsync(
+    `cast code ${contractAddress} --rpc-url ${mainnetRpcUrl}`
+  );
+  const bytecodeStr = bytecode.trim();
+  console.log(`    Bytecode length: ${bytecodeStr.length} chars`);
+
+  // Fetch storage from mainnet if slots specified
+  const storageValues: Record<number, string> = {};
+  if (storageSlots.length > 0) {
+    console.log(`  Fetching ${contractName} storage from mainnet...`);
+    for (const slot of storageSlots) {
+      const { stdout: value } = await execAsync(
+        `cast storage ${contractAddress} ${slot} --rpc-url ${mainnetRpcUrl}`
+      );
+      const valueStr = value.trim();
+      storageValues[slot] = valueStr;
+      console.log(`    Slot ${slot}: ${valueStr}`);
+    }
+  }
+
+  // Set bytecode on local chain
+  console.log(`  Setting ${contractName} bytecode at ${contractAddress}...`);
+  await execAsync(
+    `cast rpc anvil_setCode ${contractAddress} ${bytecodeStr} --rpc-url ${localRpcUrl}`
+  );
+
+  // Set storage on local chain if any slots were fetched
+  if (storageSlots.length > 0) {
+    console.log(`  Setting ${contractName} storage...`);
+    for (const slot of storageSlots) {
+      await execAsync(
+        `cast rpc anvil_setStorageAt ${contractAddress} 0x${slot.toString(16)} ${storageValues[slot]} --rpc-url ${localRpcUrl}`
+      );
+    }
+  }
+
+  console.log(`  ✅ ${contractName} deployed at ${contractAddress}`);
 }
 
 

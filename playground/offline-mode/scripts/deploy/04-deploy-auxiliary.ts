@@ -2,7 +2,7 @@
  * Deploy Auxiliary Contracts (TradeSimulator, Signatures, HooksTrampoline, CoWShed)
  */
 
-import { exec } from 'child_process';
+import { exec, execSync } from 'child_process';
 import { promisify } from 'util';
 import { DeploymentConfig, CowProtocolAddresses, AuxiliaryAddresses } from './types';
 import {
@@ -19,39 +19,53 @@ export async function deployAuxiliary(
   config: DeploymentConfig,
   cowProtocol: CowProtocolAddresses
 ): Promise<AuxiliaryAddresses> {
-  // Step 3.5: Deploy GPv2TradeSimulator
-  printSection('STEP 3.5: Deploying GPv2TradeSimulator Contract');
+  // Step 3.5: Deploy Balances Helper at mainnet address
+  printSection('STEP 3.5: Deploying Balances Helper Contract');
 
-  await runForgeScript(
-    'contracts/script/DeployTradeSimulator.s.sol',
-    'DeployTradeSimulator',
-    config.rpcUrl,
-    config.deployerPrivateKey
+  const mainnetBalances = '0x3e8C6De9510e7ECad902D005DE3Ab52f35cF4f1b';
+
+  console.log('Fetching Balances Helper bytecode from mainnet...');
+  const balancesBytecode = execSync(
+    `cast code ${mainnetBalances} --rpc-url https://eth.llamarpc.com`,
+    { encoding: 'utf8' }
+  ).trim();
+
+  console.log(`  Balances Helper bytecode length: ${balancesBytecode.length} bytes`);
+
+  console.log('Setting Balances Helper bytecode at local address...');
+  execSync(
+    `cast rpc anvil_setCode ${mainnetBalances} ${balancesBytecode} --rpc-url ${config.rpcUrl}`,
+    { stdio: 'inherit' }
   );
 
-  const tradeSimulatorBroadcast = readBroadcastResult('DeployTradeSimulator');
-  const tradeSimulator = extractAddress(tradeSimulatorBroadcast, undefined, 'CREATE2');
-
+  const tradeSimulator = mainnetBalances;
   console.log('');
-  console.log('✅ GPv2TradeSimulator contract deployed!');
+  console.log('✅ Balances Helper contract deployed!');
   console.log('');
-  console.log('📝 Deployed GPv2TradeSimulator address:');
-  printDeployment('GPv2TradeSimulator', tradeSimulator);
+  console.log('📝 Deployed Balances Helper address:');
+  printDeployment('Balances Helper', tradeSimulator);
   console.log('');
 
-  // Step 3.6: Deploy Signatures Contract
+  // Step 3.6: Deploy Signatures Contract at mainnet address
   printSection('STEP 3.6: Deploying Signatures Contract');
 
-  await runForgeScript(
-    'contracts/script/DeploySignatures.s.sol',
-    'DeploySignatures',
-    config.rpcUrl,
-    config.deployerPrivateKey
+  const mainnetSignatures = '0x8262d639c38470F38d2eff15926F7071c28057Af';
+
+  console.log('Fetching Signatures bytecode from mainnet...');
+  const signaturesBytecode = execSync(
+    `cast code ${mainnetSignatures} --rpc-url https://eth.llamarpc.com`,
+    { encoding: 'utf8' }
+  ).trim();
+
+  console.log(`  Signatures bytecode length: ${signaturesBytecode.length} bytes`);
+
+  console.log('Setting Signatures bytecode at local address...');
+  execSync(
+    `cast rpc anvil_setCode ${mainnetSignatures} ${signaturesBytecode} --rpc-url ${config.rpcUrl}`,
+    { stdio: 'inherit' }
   );
 
-  const signaturesBroadcast = readBroadcastResult('DeploySignatures');
-  const signatures = extractAddress(signaturesBroadcast, 'Signatures');
-
+  const signatures = mainnetSignatures;
   console.log('');
   console.log('✅ Signatures contract deployed!');
   console.log('');
@@ -59,9 +73,24 @@ export async function deployAuxiliary(
   printDeployment('Signatures', signatures);
   console.log('');
 
-  // Step 3.7: Deploy HooksTrampoline Contract
+  // Step 3.7: Deploy HooksTrampoline Contract at mainnet address
   printSection('STEP 3.7: Deploying HooksTrampoline Contract');
 
+  const mainnetHooksTrampoline = '0x60Bf78233f48eC42eE3F101b9a05eC7878728006';
+  const hooksDeployer = '0x016f34D4f2578c3e9DFfc3f2b811Ba30c0c9e7f3';
+
+  console.log('Setting up HooksTrampoline deployer account...');
+  execSync(
+    `cast send ${hooksDeployer} --value 100ether --private-key ${config.deployerPrivateKey} --rpc-url ${config.rpcUrl}`,
+    { stdio: 'inherit' }
+  );
+
+  execSync(
+    `cast rpc anvil_setNonce ${hooksDeployer} 0xe --rpc-url ${config.rpcUrl}`,
+    { stdio: 'inherit' }
+  );
+
+  console.log('Deploying HooksTrampoline at mainnet address...');
   await runForgeScript(
     'contracts/script/DeployHooksTrampoline.s.sol',
     'DeployHooksTrampoline',
@@ -75,8 +104,19 @@ export async function deployAuxiliary(
   );
 
   const hooksTrampolineBroadcast = readBroadcastResult('DeployHooksTrampoline');
-  const hooksTrampoline = extractAddress(hooksTrampolineBroadcast, 'HooksTrampoline');
+  const tempHooksTrampoline = extractAddress(hooksTrampolineBroadcast, 'HooksTrampoline');
 
+  const hooksTrampolineBytecode = execSync(
+    `cast code ${tempHooksTrampoline} --rpc-url ${config.rpcUrl}`,
+    { encoding: 'utf8' }
+  ).trim();
+
+  execSync(
+    `cast rpc anvil_setCode ${mainnetHooksTrampoline} ${hooksTrampolineBytecode} --rpc-url ${config.rpcUrl}`,
+    { stdio: 'inherit' }
+  );
+
+  const hooksTrampoline = mainnetHooksTrampoline;
   console.log('');
   console.log('✅ HooksTrampoline contract deployed!');
   console.log('');

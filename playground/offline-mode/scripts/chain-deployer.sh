@@ -21,16 +21,15 @@ trap cleanup EXIT
 
 echo "🔍 Chain Deployer: Checking for existing state..."
 
-if [ -f "$STATE_FILE" ]; then
-    echo "✅ State file found at $STATE_FILE"
+# Check if we have a deployment-ready state with contracts
+if [ -f "$STATE_FILE" ] && [ -f "/playground/.env.offline" ]; then
+    echo "✅ State file found at $STATE_FILE with deployed contracts"
 
     # Restore .env.offline from backup if it exists
     ENV_BACKUP="/state/.env.offline.backup"
     if [ -f "$ENV_BACKUP" ]; then
         echo "📝 Restoring .env.offline from backup..."
         cp "$ENV_BACKUP" "$ENV_FILE"
-    else
-        echo "⚠️  Warning: No .env.offline backup found in state directory"
     fi
 
     echo "🎉 Chain deployer is healthy - state already exists"
@@ -39,6 +38,13 @@ if [ -f "$STATE_FILE" ]; then
 fi
 
 echo "⚠️  No state file found. Starting deployment process..."
+
+# Clean up any old .env.offline files and broadcast directories that might have stale addresses
+echo "🧹 Cleaning up old configuration files..."
+rm -f /playground/.env.offline
+rm -rf /workspace/broadcast
+rm -rf /workspace/cache
+echo "✅ Old configuration cleaned"
 
 # Install Node.js 18.x (LTS) and npm
 echo "📦 Installing Node.js 18.x and npm..."
@@ -57,18 +63,19 @@ if ! npm install --legacy-peer-deps; then
     exit 1
 fi
 
-# Start Anvil in the background with --dump-state flag
-echo "🚀 Starting temporary Anvil instance..."
+# Step 1: Start Anvil at target block number
+TARGET_BLOCK=12593265
+echo "🚀 Step 1: Starting Anvil at block $TARGET_BLOCK..."
+
 anvil \
     --host 0.0.0.0 \
     --port 8545 \
-    --chain-id 31337 \
-    --block-time 1 \
+    --chain-id 1 \
+    --number $TARGET_BLOCK \
     --gas-limit 30000000 \
     --code-size-limit 50000 \
-    --accounts 10 \
-    --balance 1000000 \
-    --mnemonic "test test test test test test test test test test test junk"
+    --mnemonic "test test test test test test test test test test test junk" \
+    --dump-state "$STATE_FILE" &
 
 ANVIL_PID=$!
 echo "📝 Anvil PID: $ANVIL_PID"
@@ -88,8 +95,20 @@ for i in {1..30}; do
     sleep 1
 done
 
+# Step 2: Set block number using vm.roll()
+TARGET_BLOCK=12593265
+echo "🔢 Step 2: Setting block number to $TARGET_BLOCK using vm.roll()..."
+echo "📊 Note: This sets the block context for Forge scripts during deployment"
+
+if ! forge script scripts/deploy/00-SetBlockNumber.s.sol --rpc-url http://127.0.0.1:8545 --broadcast --unlocked; then
+    echo "⚠️  Warning: Failed to run SetBlockNumber script, but continuing with deployment..."
+fi
+
+echo "✅ Block number context prepared for deployments"
+echo ""
+
 # Run deployment
-echo "🚀 Running deployment script..."
+echo "🚀 Step 3: Running deployment script..."
 if ! npm run deploy:ts 2>&1 | tee /tmp/deployment.log; then
     echo "❌ Deployment script failed!"
     exit 1
@@ -98,6 +117,7 @@ fi
 echo "✅ Deployment completed successfully!"
 
 # Kill Anvil gracefully so it dumps the state
+echo ""
 echo "🛑 Stopping Anvil (this will automatically dump state)..."
 echo "📝 Sending SIGTERM to Anvil PID $ANVIL_PID..."
 kill -TERM $ANVIL_PID 2>/dev/null || true
@@ -124,6 +144,54 @@ if [ ! -f "$STATE_FILE" ]; then
 fi
 
 echo "✅ State saved to $STATE_FILE ($(stat -f%z "$STATE_FILE" 2>/dev/null || stat -c%s "$STATE_FILE" 2>/dev/null) bytes)"
+echo "   Note: Chain will start at block 12593265 when loaded (configured via --number flag)"
+echo ""
 
+# Verify contracts deployed at correct mainnet addresses
+echo ""
+echo "🔍 Verifying contract addresses..."
+EXPECTED_AUTHENTICATOR="0x2c4c28DDBdAc9C5E7055b4C863b72eA0149D8aFE"
+EXPECTED_SETTLEMENT="0x9008D19f58AAbD9eD0D60971565AA8510560ab41"
+EXPECTED_VAULT_RELAYER="0xC92E8bdf79f0507f65a392b0ab4667716BFE0110"
+
+ACTUAL_AUTHENTICATOR=$(grep "AUTHENTICATOR_ADDRESS=" /playground/.env.offline | cut -d'=' -f2 | tr -d '\r')
+ACTUAL_SETTLEMENT=$(grep "SETTLEMENT_CONTRACT_ADDRESS=" /playground/.env.offline | cut -d'=' -f2 | tr -d '\r')
+ACTUAL_VAULT_RELAYER=$(grep "VAULT_RELAYER_ADDRESS=" /playground/.env.offline | cut -d'=' -f2 | tr -d '\r')
+
+# Convert to lowercase for comparison
+EXPECTED_AUTHENTICATOR_LOWER=$(echo "$EXPECTED_AUTHENTICATOR" | tr '[:upper:]' '[:lower:]')
+ACTUAL_AUTHENTICATOR_LOWER=$(echo "$ACTUAL_AUTHENTICATOR" | tr '[:upper:]' '[:lower:]')
+EXPECTED_SETTLEMENT_LOWER=$(echo "$EXPECTED_SETTLEMENT" | tr '[:upper:]' '[:lower:]')
+ACTUAL_SETTLEMENT_LOWER=$(echo "$ACTUAL_SETTLEMENT" | tr '[:upper:]' '[:lower:]')
+EXPECTED_VAULT_RELAYER_LOWER=$(echo "$EXPECTED_VAULT_RELAYER" | tr '[:upper:]' '[:lower:]')
+ACTUAL_VAULT_RELAYER_LOWER=$(echo "$ACTUAL_VAULT_RELAYER" | tr '[:upper:]' '[:lower:]')
+
+if [ "$ACTUAL_AUTHENTICATOR_LOWER" != "$EXPECTED_AUTHENTICATOR_LOWER" ]; then
+    echo "❌ ERROR: Authenticator deployed at wrong address!"
+    echo "   Expected: $EXPECTED_AUTHENTICATOR"
+    echo "   Actual:   $ACTUAL_AUTHENTICATOR"
+    exit 1
+fi
+
+if [ "$ACTUAL_SETTLEMENT_LOWER" != "$EXPECTED_SETTLEMENT_LOWER" ]; then
+    echo "❌ ERROR: Settlement deployed at wrong address!"
+    echo "   Expected: $EXPECTED_SETTLEMENT"
+    echo "   Actual:   $ACTUAL_SETTLEMENT"
+    exit 1
+fi
+
+if [ "$ACTUAL_VAULT_RELAYER_LOWER" != "$EXPECTED_VAULT_RELAYER_LOWER" ]; then
+    echo "❌ ERROR: VaultRelayer created at wrong address!"
+    echo "   Expected: $EXPECTED_VAULT_RELAYER"
+    echo "   Actual:   $ACTUAL_VAULT_RELAYER"
+    exit 1
+fi
+
+echo "✅ All contracts deployed at correct mainnet addresses!"
+echo "   Authenticator:  $ACTUAL_AUTHENTICATOR"
+echo "   Settlement:     $ACTUAL_SETTLEMENT"
+echo "   VaultRelayer:   $ACTUAL_VAULT_RELAYER"
+
+echo ""
 echo "🎉 Chain deployer completed successfully!"
 touch "$DEPLOYMENT_COMPLETE_FLAG"

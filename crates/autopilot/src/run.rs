@@ -454,18 +454,24 @@ pub async fn run(args: Arguments, shutdown_controller: ShutdownController) {
             .await;
     let settlement_observer =
         crate::domain::settlement::Observer::new(eth.clone(), persistence.clone());
-    let settlement_contract_start_index = match GPv2Settlement::deployment_block(&chain_id) {
-        Some(block) => {
-            tracing::debug!(block, "found settlement contract deployment");
-            block
-        }
-        _ => {
-            // If the deployment information can't be found, start from 0 (default
-            // behaviour). For real contracts, the deployment information is specified
-            // for all the networks, but it isn't specified for the e2e tests which deploy
-            // the contracts from scratch
-            tracing::warn!("Settlement contract deployment information not found");
-            0
+    // In offline mode, always start from block 0 since we deploy contracts locally
+    let settlement_contract_start_index = if std::env::var("OFFLINE_MODE").is_ok() {
+        tracing::info!("Offline mode detected, using block 0 for settlement contract start");
+        0
+    } else {
+        match GPv2Settlement::deployment_block(&chain_id) {
+            Some(block) => {
+                tracing::debug!(block, "found settlement contract deployment");
+                block
+            }
+            _ => {
+                // If the deployment information can't be found, start from 0 (default
+                // behaviour). For real contracts, the deployment information is specified
+                // for all the networks, but it isn't specified for the e2e tests which deploy
+                // the contracts from scratch
+                tracing::warn!("Settlement contract deployment information not found");
+                0
+            }
         }
     };
     let settlement_event_indexer = EventUpdater::new(

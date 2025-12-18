@@ -22,7 +22,7 @@ const CONFIG = {
   host: 'localhost:8080',
   rpcUrl: 'http://localhost:8545',
   orderbookUrl: 'http://localhost:8080',
-  chainId: 31337,
+  chainId: 1,
 };
 
 // Token decimals mapping

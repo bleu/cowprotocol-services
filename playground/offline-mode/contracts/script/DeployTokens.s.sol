@@ -37,12 +37,13 @@ contract DeployTokens is Script {
         console.log("Chain ID:", block.chainid);
         console.log("");
 
-        vm.startBroadcast(deployerPrivateKey);
+        // WETH is already deployed at mainnet address via cast rpc anvil_setCode
+        console.log("Using WETH at mainnet address...");
+        address wethAddress = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+        WETH weth = WETH(payable(wethAddress));
+        console.log("  WETH address:", wethAddress);
 
-        // Deploy WETH with CREATE2
-        console.log("Deploying WETH with CREATE2...");
-        WETH weth = new WETH{salt: WETH_SALT}();
-        console.log("  WETH deployed at:", address(weth));
+        vm.startBroadcast(deployerPrivateKey);
 
         // Wrap some ETH to WETH for deployer
         weth.deposit{value: WETH_SUPPLY}();
@@ -106,7 +107,7 @@ contract DeployTokens is Script {
         console.log("===========================================");
         console.log("DEPLOYMENT SUMMARY");
         console.log("===========================================");
-        console.log("WETH:", address(weth));
+        console.log("WETH:", wethAddress);
         console.log("USDC:", address(usdc));
         console.log("DAI:", address(dai));
         console.log("USDT:", address(usdt));

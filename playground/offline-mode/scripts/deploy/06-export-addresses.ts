@@ -63,7 +63,7 @@ missing-pool-cache-time = "1h"
   console.log('  ✅ Generated offline-mode/configs/offline/driver.toml');
 
   // Generate baseline.toml
-  const baselineToml = `chain-id = "31337" # Anvil local chain
+  const baselineToml = `chain-id = "1" # Mainnet chain ID
 base-tokens = [
     "${allAddresses.tokens.WETH}", # WETH
     "${allAddresses.tokens.DAI}", # DAI
@@ -84,7 +84,7 @@ native-token-price-estimation-amount = "100000000000000000" # 0.1 ETH
 # Generated at: ${Math.floor(Date.now() / 1000)}
 
 # Network Configuration
-CHAIN_ID=31337
+CHAIN_ID=1
 NODE_URL=http://chain:8545
 SIMULATION_NODE_URL=http://chain:8545
 
@@ -95,6 +95,9 @@ USDC_ADDRESS=${allAddresses.tokens.USDC}
 USDT_ADDRESS=${allAddresses.tokens.USDT}
 GNO_ADDRESS=${allAddresses.tokens.GNO}
 NATIVE_TOKEN_ADDRESS=${allAddresses.tokens.WETH}
+
+# Base Tokens for Orderbook
+BASE_TOKENS=${allAddresses.tokens.WETH},${allAddresses.tokens.DAI},${allAddresses.tokens.USDC},${allAddresses.tokens.USDT},${allAddresses.tokens.GNO}
 
 # Uniswap V2 Addresses
 UNISWAP_V2_FACTORY_ADDRESS=${allAddresses.uniswap.factory}
