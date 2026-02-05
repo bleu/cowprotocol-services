@@ -1,5 +1,12 @@
 global:
-  scrape_interval: 5s
+  scrape_interval: 15s  # Reduced from 5s to decrease data volume
+  evaluation_interval: 15s
+  external_labels:
+    cluster: "cow-protocol-offline"
+    environment: "local"
+
+# Enable remote write receiver for K6 (only when K6 is running)
+# Note: Removed self-referencing remote_write that was causing data duplication
 
 scrape_configs:
   - job_name: "prometheus"
@@ -21,3 +28,9 @@ scrape_configs:
   - job_name: "baseline"
     static_configs:
       - targets: ["baseline:80"]
+
+  # K6 performance testing metrics (if exposed)
+  - job_name: "k6"
+    static_configs:
+      - targets: ["k6:6565"]
+    scrape_interval: 5s

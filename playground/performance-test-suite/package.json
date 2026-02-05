@@ -1,0 +1,41 @@
+{
+  "name": "cow-protocol-performance-test-suite",
+  "version": "0.1.0",
+  "description": "Performance testing suite for CoW Protocol Playground using K6",
+  "main": "dist/load-test.js",
+  "scripts": {
+    "build": "webpack",
+    "sign-orders": "node scripts/sign-orders.js",
+    "test": "npm run build && k6 run dist/load-test.js",
+    "test:light": "npm run build && k6 run dist/load-test.js --env SCENARIO=light",
+    "test:medium": "npm run build && k6 run dist/load-test.js --env SCENARIO=medium",
+    "test:heavy": "npm run build && k6 run dist/load-test.js --env SCENARIO=heavy",
+    "test:spike": "npm run build && k6 run dist/load-test.js --env SCENARIO=spike",
+    "test:rampup": "npm run build && k6 run dist/load-test.js --env SCENARIO=rampup",
+    "test:stress": "npm run build && k6 run dist/load-test.js --env SCENARIO=stress",
+    "test:soak": "npm run build && k6 run dist/load-test.js --env SCENARIO=soak",
+    "test:custom": "npm run build && k6 run dist/load-test.js --env BASE_URL=$BASE_URL",
+    "watch": "webpack --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "k6",
+    "performance",
+    "load-testing",
+    "cow-protocol",
+    "blockchain",
+    "defi"
+  ],
+  "author": "bleu",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/k6": "^0.52.0",
+    "typescript": "^5.3.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "ts-loader": "^9.5.1"
+  },
+  "dependencies": {
+    "ethers": "^6.13.0"
+  }
+}

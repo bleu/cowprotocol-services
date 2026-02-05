@@ -1,0 +1,61 @@
+{
+  "baseUrl": "http://localhost:8080",
+  "orderbookApi": "/api/v1",
+  "tokenPairs": [
+    {
+      "name": "WETH/USDC",
+      "sellToken": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "buyToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+    },
+    {
+      "name": "WETH/DAI",
+      "sellToken": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "buyToken": "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+    },
+    {
+      "name": "USDC/DAI",
+      "sellToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "buyToken": "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+    }
+  ],
+  "orderGeneration": {
+    "minAmount": "1000000000000000000",
+    "maxAmount": "10000000000000000000",
+    "orderTypes": ["market", "limit"]
+  },
+  "scenarios": {
+    "light": {
+      "description": "Light load for smoke testing",
+      "vus": 5,
+      "duration": "2m"
+    },
+    "medium": {
+      "description": "Medium load representing typical production",
+      "vus": 20,
+      "duration": "5m"
+    },
+    "heavy": {
+      "description": "Heavy load for stress testing",
+      "vus": 50,
+      "duration": "10m"
+    },
+    "spike": {
+      "description": "Traffic spike testing",
+      "stages": [
+        { "duration": "1m", "target": 5 },
+        { "duration": "30s", "target": 100 },
+        { "duration": "2m", "target": 100 },
+        { "duration": "1m", "target": 5 }
+      ]
+    }
+  },
+  "thresholds": {
+    "http_req_duration": {
+      "p95": 1000,
+      "p99": 2000
+    },
+    "http_req_failed": {
+      "rate": 0.05
+    }
+  }
+}
